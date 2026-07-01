@@ -20,7 +20,6 @@ jobs:
       
       - name: Run pipeline
         env:
-          GEMINI_KEY_1: ${{ secrets.GEMINI_KEY_1 }}
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
         run: python main.py
       
