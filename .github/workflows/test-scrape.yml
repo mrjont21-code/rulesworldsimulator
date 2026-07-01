@@ -1,4 +1,4 @@
-concurrency: name: Debug Sources (Khảo sát địa hình)
+name: Debug Sources (Khảo sát địa hình)
 
 on:
   workflow_dispatch: {}
