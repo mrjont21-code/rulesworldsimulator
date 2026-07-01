@@ -1,124 +1,183 @@
 """
-World Lore Harvester - Pipeline T0-T5
-Chạy tay (giai đoạn 1) hoặc tự động 2 lần/ngày (giai đoạn 2)
+MAIN: Orchestrator - Pattern Pomodoro 25 phút / 15 phút nghỉ
+Xoay vòng 35 từ khóa
 """
 import os
 import sys
-import logging
 import time
+import logging
+import uuid
 from datetime import datetime, timezone
 
 from config import settings
-from pipeline.t0_search import T0Search
-from pipeline.t1_classify import T1Classify
-from pipeline.t2_scrape import T2Scrape
-from pipeline.t3_normalize import T3Normalize
-from pipeline.t4_deduplicate import T4Deduplicate
-from pipeline.t5_upload import T5Upload
 
+# Import pipeline stages
+from t0_search import run_t0
+from t1_classify import run_t1
+from t2_scrape import run_t2
+from t3_normalize import run_t3
+from t4_deduplicate import run_t4
+from t5_upload import run_t5
+
+# Setup logging
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s"
+    format='%(asctime)s - [%(name)s] %(message)s',
+    datefmt='%H:%M:%S',
+    stream=sys.stderr
 )
-logger = logging.getLogger("main")
+logger = logging.getLogger("MAIN")
 
 
-def run_pipeline():
-    """Chạy pipeline T0-T5"""
-    
-    # Generate run_id
-    run_id = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    started_at = datetime.now(timezone.utc).isoformat()
+def run_pipeline_session() -> dict:
+    """
+    Chạy 1 phiên pipeline hoàn chỉnh (trong 25 phút)
+    """
+    run_id = f"run_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
     
     logger.info("=" * 80)
-    logger.info(f"🚀 BẮT ĐẦU PIPELINE - Run ID: {run_id}")
+    logger.info(f"🚀 PIPELINE SESSION STARTED")
+    logger.info(f"   Run ID: {run_id}")
+    logger.info(f"   Start:  {datetime.now().strftime('%H:%M:%S')}")
     logger.info("=" * 80)
     
     stats = {
-        "run_id": run_id,
-        "started_at": started_at,
-        "keywords_generated": 0,
+        "started_at": datetime.now(timezone.utc).isoformat(),
+        "keywords_used": [],
         "links_found": 0,
         "links_scraped": 0,
         "contents_validated": 0,
-        "rules_uploaded": 0,
-        "duplicates_removed": 0
+        "duplicates_removed": 0,
+        "rules_uploaded": 0
     }
     
-    start_time = time.time()
+    session_start = time.time()
     
     try:
-        # T0: Search
-        t0 = T0Search()
-        links = t0.run(run_id)
+        # === T0: SEARCH ===
+        logger.info("\n" + "=" * 80)
+        logger.info("🔍 STAGE T0: SEARCH")
+        logger.info("=" * 80)
+        
+        links = run_t0()
         stats["links_found"] = len(links)
-        stats["keywords_generated"] = 5  # Giả sử sinh 5 từ khóa
         
         if not links:
-            logger.error("❌ T0 không tìm được link nào")
-            return
+            logger.warning("⚠️  Không tìm được link nào, kết thúc session")
+            return stats
         
-        # Check thời gian
-        elapsed = time.time() - start_time
-        if elapsed > 20 * 60:  # 20 phút
-            logger.warning("⚠️  Gần hết thời gian, dừng pipeline")
-            return
+        # === T1: CLASSIFY ===
+        logger.info("\n" + "=" * 80)
+        logger.info("🏷️  STAGE T1: CLASSIFY")
+        logger.info("=" * 80)
         
-        # T1: Classify
-        t1 = T1Classify()
-        classified_links = t1.classify_links(links)
+        classified_links = run_t1(links)
         
-        # T2: Scrape
-        t2 = T2Scrape()
-        scraped_contents = t2.scrape_links(classified_links)
+        # === T2: SCRAPE ===
+        logger.info("\n" + "=" * 80)
+        logger.info("📥 STAGE T2: SCRAPE")
+        logger.info("=" * 80)
+        
+        scraped_contents = run_t2(classified_links)
         stats["links_scraped"] = len(scraped_contents)
         
-        # Check thời gian
-        elapsed = time.time() - start_time
-        if elapsed > 22 * 60:  # 22 phút
-            logger.warning("⚠️  Gần hết thời gian, dừng pipeline")
-            return
+        if not scraped_contents:
+            logger.warning("⚠️  Không scrape được nội dung nào")
+            return stats
         
-        # T3: Normalize
-        t3 = T3Normalize()
-        normalized_contents = t3.normalize_all(scraped_contents)
-        stats["contents_validated"] = len(normalized_contents)
-        
-        # T4: Deduplicate
-        t4 = T4Deduplicate()
-        new_contents = t4.check_duplicates(normalized_contents)
-        stats["duplicates_removed"] = len(normalized_contents) - len(new_contents)
-        
-        # Lưu links và content vào MongoDB
-        t4.save_links(classified_links, run_id)
-        t4.save_content(new_contents, run_id)
-        
-        # T5: Upload
-        t5 = T5Upload()
-        t5.upload_rules(new_contents, run_id)
-        stats["rules_uploaded"] = len(new_contents)
-        
-        # Lưu run log
-        t5.save_run_log(run_id, stats)
-        
-        # Tổng kết
-        elapsed = time.time() - start_time
+        # === T3: NORMALIZE ===
+        logger.info("\n" + "=" * 80)
+        logger.info("🔧 STAGE T3: NORMALIZE")
         logger.info("=" * 80)
-        logger.info("✅ PIPELINE HOÀN TẤT")
+        
+        normalized_contents = run_t3(scraped_contents)
+        
+        # === T4: DEDUPLICATE ===
+        logger.info("\n" + "=" * 80)
+        logger.info("🔍 STAGE T4: DEDUPLICATE")
         logger.info("=" * 80)
-        logger.info(f"   Thời gian: {elapsed:.1f}s ({elapsed/60:.1f} phút)")
-        logger.info(f"   Keywords: {stats['keywords_generated']}")
-        logger.info(f"   Links: {stats['links_found']}")
-        logger.info(f"   Scraped: {stats['links_scraped']}")
-        logger.info(f"   Validated: {stats['contents_validated']}")
-        logger.info(f"   Duplicates: {stats['duplicates_removed']}")
-        logger.info(f"   Uploaded: {stats['rules_uploaded']}")
+        
+        unique_contents = run_t4(normalized_contents, run_id)
+        stats["duplicates_removed"] = len(normalized_contents) - len(unique_contents)
+        stats["contents_validated"] = len(unique_contents)
+        
+        # === T5: UPLOAD ===
+        logger.info("\n" + "=" * 80)
+        logger.info("📤 STAGE T5: UPLOAD")
+        logger.info("=" * 80)
+        
+        run_t5(unique_contents, run_id, stats)
+        stats["rules_uploaded"] = len(unique_contents)
         
     except Exception as e:
-        logger.error(f"❌ Pipeline lỗi: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"❌ Pipeline error: {e}", exc_info=True)
+    
+    # Calculate duration
+    stats["duration_seconds"] = time.time() - session_start
+    
+    logger.info("\n" + "=" * 80)
+    logger.info("📊 SESSION SUMMARY")
+    logger.info("=" * 80)
+    logger.info(f"   Duration:        {stats['duration_seconds']/60:.1f} phút")
+    logger.info(f"   Links found:     {stats['links_found']}")
+    logger.info(f"   Links scraped:   {stats['links_scraped']}")
+    logger.info(f"   Contents valid:  {stats['contents_validated']}")
+    logger.info(f"   Duplicates:      {stats['duplicates_removed']}")
+    logger.info(f"   Rules uploaded:  {stats['rules_uploaded']}")
+    logger.info("=" * 80)
+    
+    return stats
+
+
+def run_pomodoro_loop():
+    """
+    Loop Pomodoro: 25 phút làm việc, 15 phút nghỉ
+    """
+    logger.info("🎯 RULESWORLD SCRAPER - POMODORO MODE")
+    logger.info(f"   Work:  {settings.WORK_MINUTES} phút")
+    logger.info(f"   Break: {settings.BREAK_MINUTES} phút")
+    logger.info(f"   Keywords: {len(settings.KEYWORDS_FILE)} từ khóa")
+    logger.info("")
+    
+    session_count = 0
+    
+    while True:
+        session_count += 1
+        
+        logger.info("\n" + "🟢" * 40)
+        logger.info(f"📝 SESSION #{session_count} - BẮT ĐẦU LÀM VIỆC")
+        logger.info("🟢" * 40 + "\n")
+        
+        # Run pipeline
+        stats = run_pipeline_session()
+        
+        # Break time
+        logger.info("\n" + "🔴" * 40)
+        logger.info(f"☕ BREAK TIME - NGHỈ {settings.BREAK_MINUTES} PHÚT")
+        logger.info(f"   Session #{session_count} completed")
+        logger.info(f"   Next session starts at: {datetime.fromtimestamp(time.time() + settings.BREAK_MINUTES * 60).strftime('%H:%M:%S')}")
+        logger.info("🔴" * 40 + "\n")
+        
+        # Sleep for break duration
+        time.sleep(settings.BREAK_MINUTES * 60)
+
+
+def run_single_session():
+    """Chạy 1 session duy nhất (cho testing)"""
+    stats = run_pipeline_session()
+    return stats
 
 
 if __name__ == "__main__":
-    run_pipeline()
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Rulesworld Scraper")
+    parser.add_argument("--loop", action="store_true", help="Chạy loop Pomodoro liên tục")
+    parser.add_argument("--once", action="store_true", help="Chạy 1 session duy nhất")
+    args = parser.parse_args()
+    
+    if args.loop:
+        run_pomodoro_loop()
+    else:
+        # Default: chạy 1 session
+        run_single_session()
