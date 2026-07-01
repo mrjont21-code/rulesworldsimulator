@@ -1,6 +1,7 @@
 """
 T0: SEARCH ENGINE - Startpage
-Sinh từ khóa mới bằng LLM, search trên Startpage, trả về 20 links
+Sinh từ khóa bằng Python thuần (KHÔNG dùng LLM)
+Search trên Startpage, trả về 20 links
 """
 import requests
 import time
@@ -8,6 +9,7 @@ import json
 import re
 import hashlib
 import logging
+import random
 from datetime import datetime, timezone
 from urllib.parse import quote_plus
 from config import settings
@@ -24,7 +26,7 @@ class T0Search:
             "Accept-Language": "en-US,en;q=0.5",
         })
         
-        # Handle MongoDB connection với try-catch
+        # Handle MongoDB connection
         self.mongo = None
         self.db = None
         
@@ -32,13 +34,11 @@ class T0Search:
             try:
                 from pymongo import MongoClient
                 self.mongo = MongoClient(settings.MONGODB_URI, serverSelectionTimeoutMS=5000)
-                # Test connection
                 self.mongo.admin.command('ping')
                 self.db = self.mongo[settings.MONGODB_DB_NAME]
                 logger.info("✅ MongoDB connected successfully")
             except Exception as e:
                 logger.warning(f"⚠️  MongoDB connection failed: {e}")
-                logger.warning("   Pipeline will continue without MongoDB")
                 self.mongo = None
                 self.db = None
 
@@ -54,66 +54,71 @@ class T0Search:
             logger.warning(f"Không thể đọc keywords từ MongoDB: {e}")
             return []
 
-    def generate_keywords_with_llm(self, count: int = 5) -> list[str]:
-        """Dùng LLM sinh từ khóa mới, không lặp lại"""
-        if not settings.GEMINI_KEY:
-            logger.warning("Không có GEMINI_KEY, dùng từ khóa mặc định")
-            return self._fallback_keywords(count)
+    def generate_keywords_python(self, count: int = 5) -> list[str]:
+        """
+        Sinh từ khóa bằng Python thuần - TỪ KHÓA THỰC TẾ
+        KHÔNG dùng LLM
+        """
+        # Danh sách từ khóa THỰC TẾ (đã kiểm chứng có kết quả)
+        REAL_KEYWORDS = [
+            # Từ khóa rộng, phổ biến
+            "silicon based life",
+            "alternative biochemistry",
+            "extraterrestrial life",
+            "hypothetical biochemistry",
+            "astrobiology",
+            "xenobiology",
+            "carbon based life",
+            "extremophiles",
+            
+            # Từ khóa cụ thể hơn nhưng vẫn thực tế
+            "silicon biology",
+            "ammonia based life",
+            "methane based life",
+            "non carbon life",
+            "alien biochemistry",
+            "exotic biology",
+            "alternative life forms",
+            "speculative evolution",
+            "theoretical biology",
+            "astrobiology research",
+            "extremophile organisms",
+            "space biology",
+            
+            # Từ khóa học thuật
+            "alternative biochemistry wikipedia",
+            "silicon life scientific analysis",
+            "extraterrestrial biochemistry research",
+            "hypothetical life forms",
+            "non terrestrial biology",
+            "exotic life chemistry",
+            "theoretical astrobiology",
+            "xenobiology studies",
+            
+            # Từ khóa cộng đồng
+            "worldbuilding alien biology",
+            "speculative biology forum",
+            "alien life discussion",
+            "exobiology community",
+            "theoretical alien life",
+        ]
         
+        # Lấy từ khóa đã dùng
         used_keywords = self.get_used_keywords()
+        used_set = set(used_keywords)
         
-        prompt = f"""Bạn là chuyên gia về alternative biochemistry và speculative evolution.
-Sinh {count} từ khóa tìm kiếm tiếng Anh về sự sống ngoài Trái Đất.
-
-Yêu cầu:
-1. Mỗi từ khóa phải kết hợp ít nhất 2 yếu tố từ danh sách sau:
-   - Base elements: {', '.join(settings.TOPIC_TREE['base_elements'])}
-   - Solvents: {', '.join(settings.TOPIC_TREE['solvents'])}
-   - Environments: {', '.join(settings.TOPIC_TREE['environments'])}
-   - Metabolism: {', '.join(settings.TOPIC_TREE['metabolism'])}
-
-2. KHÔNG lặp lại các từ khóa đã dùng:
-{chr(10).join(['- ' + kw for kw in used_keywords[-50:]])}
-
-3. Từ khóa phải cụ thể, dễ tìm được bài viết chất lượng.
-
-Output: JSON array, ví dụ: ["keyword 1", "keyword 2", ...]
-"""
+        # Lọc ra từ khóa chưa dùng
+        available_keywords = [kw for kw in REAL_KEYWORDS if kw not in used_set]
         
-        try:
-            import google.generativeai as genai
-            genai.configure(api_key=settings.GEMINI_KEY)
-            model = genai.GenerativeModel(settings.GEMINI_MODEL)
-            
-            response = model.generate_content(
-                prompt,
-                generation_config={"temperature": 0.7, "max_output_tokens": 500}
-            )
-            
-            # Parse JSON từ response
-            text = response.text
-            json_match = re.search(r'\[.*?\]', text, re.DOTALL)
-            if json_match:
-                keywords = json.loads(json_match.group())
-                return keywords[:count]
-            
-        except Exception as e:
-            logger.error(f"Lỗi gọi LLM: {e}")
+        # Nếu hết từ khóa chưa dùng, reset (cho phép dùng lại)
+        if len(available_keywords) < count:
+            logger.warning("⚠️  Hết từ khóa mới, cho phép dùng lại từ khóa cũ")
+            available_keywords = REAL_KEYWORDS
         
-        return self._fallback_keywords(count)
-
-    def _fallback_keywords(self, count: int) -> list[str]:
-        """Từ khóa mặc định nếu LLM fail"""
-        import random
+        # Random chọn từ khóa
+        selected = random.sample(available_keywords, min(count, len(available_keywords)))
         
-        keywords = []
-        for _ in range(count):
-            base = random.choice(settings.TOPIC_TREE["base_elements"])
-            solvent = random.choice(settings.TOPIC_TREE["solvents"])
-            env = random.choice(settings.TOPIC_TREE["environments"])
-            keywords.append(f"{base} based life with {solvent} in {env}")
-        
-        return keywords
+        return selected
 
     def search_startpage(self, keyword: str) -> list[dict]:
         """Search trên Startpage, trả về danh sách links"""
@@ -131,6 +136,8 @@ Output: JSON array, ví dụ: ["keyword 1", "keyword 2", ...]
             soup = BeautifulSoup(resp.text, "lxml")
             
             links = []
+            
+            # Thử tìm với class cụ thể
             for a in soup.find_all("a", class_="w-gl__result-url"):
                 href = a.get("href", "")
                 if href.startswith("http"):
@@ -141,17 +148,19 @@ Output: JSON array, ví dụ: ["keyword 1", "keyword 2", ...]
                         "searched_at": datetime.now(timezone.utc).isoformat()
                     })
             
-            # Fallback nếu không tìm thấy class cụ thể
+            # Fallback: tìm tất cả links
             if not links:
                 for a in soup.find_all("a", href=True):
                     href = a["href"]
                     if href.startswith("http") and "startpage.com" not in href:
-                        links.append({
-                            "url": href,
-                            "title": a.get_text(strip=True)[:100],
-                            "keyword": keyword,
-                            "searched_at": datetime.now(timezone.utc).isoformat()
-                        })
+                        # Lọc bỏ links nội bộ của startpage
+                        if not any(x in href for x in ["startpage.com", "ixquick.com"]):
+                            links.append({
+                                "url": href,
+                                "title": a.get_text(strip=True)[:100],
+                                "keyword": keyword,
+                                "searched_at": datetime.now(timezone.utc).isoformat()
+                            })
             
             return links[:settings.MAX_RESULTS_PER_SEARCH]
             
@@ -191,8 +200,8 @@ Output: JSON array, ví dụ: ["keyword 1", "keyword 2", ...]
         logger.info("🔍 T0: SEARCH ENGINE")
         logger.info("=" * 80)
         
-        # Sinh từ khóa
-        keywords = self.generate_keywords_with_llm(count=5)
+        # Sinh từ khóa (Python thuần, KHÔNG LLM)
+        keywords = self.generate_keywords_python(count=5)
         logger.info(f"✅ Sinh được {len(keywords)} từ khóa:")
         for i, kw in enumerate(keywords, 1):
             logger.info(f"   {i}. {kw}")
