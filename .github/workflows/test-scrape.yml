@@ -1,0 +1,81 @@
+name: Test Scrape (Kiểm tra scraper)
+
+# ============================================================
+# TEST WORKFLOW - Chạy thủ công để kiểm tra scraper
+# ============================================================
+# Mục đích: Kiểm tra xem scraper có hoạt động không trước khi
+# lắp vào pipeline chính. Không dùng LLM, không dùng MongoDB.
+#
+# Cách chạy:
+#   GitHub → Actions → "Test Scrape" → Run workflow
+#   → Chọn nguồn cần test (hoặc "all")
+#   → Chờ 5-15 phút
+#   → Download artifact để xem kết quả
+# ============================================================
+
+on:
+  workflow_dispatch:
+    inputs:
+      source:
+        description: 'Nguồn cần test'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - orions
+          - spec_evo
+          - project_rho
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run test scrape
+        run: |
+          if [ "${{ inputs.source }}" = "all" ]; then
+            python test_scrape.py all
+          else
+            python test_scrape.py ${{ inputs.source }}
+          fi
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ github.run_id }}
+          path: test_output/
+          retention-days: 7
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "## 📊 Test Scrape Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- Source: ${{ inputs.source }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Run ID: ${{ github.run_id }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Timestamp: $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f test_output/test_summary_*.json ]; then
+            echo "### Kết quả:" >> $GITHUB_STEP_SUMMARY
+            echo '```json' >> $GITHUB_STEP_SUMMARY
+            cat test_output/test_summary_*.json >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Không có kết quả test" >> $GITHUB_STEP_SUMMARY
+          fi
