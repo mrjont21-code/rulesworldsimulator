@@ -38,44 +38,92 @@ def ensure_data_dir():
 # PHASE 1: SCRAPE
 # ============================================================
 
+SCRAPER_MAP = {
+    "orions_arm": (OrionsArmScraper, "orions"),
+    "spec_evo":   (SpeculativeEvoScraper, "spec_evo"),
+    "project_rho": (ProjectRhoScraper, "project_rho"),
+}
+
+
 def cmd_scrape(source: str):
-    """Cào dữ liệu thô từ 1 nguồn, lưu vào data/raw_<source>.json"""
+    """PHẦN 1: Cào toàn bộ dữ liệu thô từ 1 nguồn, lưu vào data/raw_<source>.json"""
     ensure_data_dir()
 
-    scrapers = {
-        "orions_arm": (OrionsArmScraper, "raw_orions.json"),
-        "spec_evo":   (SpeculativeEvoScraper, "raw_spec_evo.json"),
-        "project_rho": (ProjectRhoScraper, "raw_project_rho.json"),
-    }
-
-    if source not in scrapers:
-        logger.error(f"Nguồn không hợp lệ: {source}. Chọn: {list(scrapers.keys())}")
+    if source not in SCRAPER_MAP:
+        logger.error(f"Nguồn không hợp lệ: {source}. Chọn: {list(SCRAPER_MAP.keys())}")
         sys.exit(1)
 
-    ScraperClass, filename = scrapers[source]
-    logger.info(f"Bắt đầu scrape: {source}")
+    ScraperClass, tag = SCRAPER_MAP[source]
+    logger.info(f"[Phần 1] Bắt đầu scrape toàn bộ: {source}")
 
     scraper = ScraperClass()
     articles = scraper.scrape_all()
 
-    output_path = os.path.join(DATA_DIR, filename)
+    output_path = os.path.join(DATA_DIR, f"raw_{tag}.json")
     with open(output_path, "w", encoding="utf-8") as f:
         json.dump(articles, f, ensure_ascii=False, indent=2)
 
     logger.info(f"Đã lưu {len(articles)} mục → {output_path}")
 
 
+def cmd_scrape_recent(source: str):
+    """
+    PHẦN 2: Chỉ cào bài viết mới/thay đổi kể từ lần refresh trước.
+    Lưu vào data/incr_<source>.json. Cần MONGODB_URI để đọc state.
+    """
+    ensure_data_dir()
+
+    if source not in SCRAPER_MAP:
+        logger.error(f"Nguồn không hợp lệ: {source}. Chọn: {list(SCRAPER_MAP.keys())}")
+        sys.exit(1)
+
+    if not settings.MONGODB_URI:
+        logger.error("MONGODB_URI chưa được cấu hình — cần để đọc state Phần 2")
+        sys.exit(1)
+
+    ScraperClass, tag = SCRAPER_MAP[source]
+    scraper = ScraperClass()
+    uploader = MongoUploader()
+
+    # Ghi lại mốc "bắt đầu refresh" một lần duy nhất trong job,
+    # để cmd_finalize(update_state=True) dùng làm last_refresh_at mới.
+    start_marker = os.path.join(DATA_DIR, "_refresh_start.json")
+    if not os.path.exists(start_marker):
+        with open(start_marker, "w") as f:
+            json.dump({"start": datetime.now(timezone.utc).isoformat()}, f)
+
+    try:
+        if source == "project_rho":
+            prev_hashes = uploader.get_page_hashes()
+            articles, new_hashes = scraper.scrape_recent(prev_hashes)
+            uploader.set_page_hashes(new_hashes)
+        else:
+            last_ts = uploader.get_last_refresh_timestamp()
+            logger.info(f"[Phần 2] '{source}' — lấy bài thay đổi sau {last_ts}")
+            articles = scraper.scrape_recent(last_ts)
+    finally:
+        uploader.close()
+
+    output_path = os.path.join(DATA_DIR, f"incr_{tag}.json")
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(articles, f, ensure_ascii=False, indent=2)
+
+    logger.info(f"[Phần 2] Đã lưu {len(articles)} mục mới/thay đổi → {output_path}")
+
+
 # ============================================================
 # PHASE 2: EXTRACT (batch LLM)
 # ============================================================
 
-def _load_all_raw() -> list[dict]:
-    """Gộp tất cả file raw JSON thành 1 danh sách."""
+def _load_all_raw(prefix: str = "raw") -> list[dict]:
+    """
+    Gộp tất cả file JSON (raw_* cho Phần 1, incr_* cho Phần 2) thành 1 danh sách.
+    """
     all_articles = []
     files = {
-        "raw_orions.json": "orions_arm",
-        "raw_spec_evo.json": "speculative_evo",
-        "raw_project_rho.json": "project_rho",
+        f"{prefix}_orions.json": "orions_arm",
+        f"{prefix}_spec_evo.json": "speculative_evo",
+        f"{prefix}_project_rho.json": "project_rho",
     }
 
     for filename, source in files.items():
@@ -94,11 +142,12 @@ def _load_all_raw() -> list[dict]:
     return all_articles
 
 
-def cmd_extract_batch(batch_id: int):
+def cmd_extract_batch(batch_id: int, prefix: str = "raw"):
     """
     Xử lý batch thứ batch_id bằng LLM.
     Mỗi batch = ARTICLES_PER_BATCH articles.
     Output: data/extracted_batch_<id>.json
+    prefix="raw" cho Phần 1 (toàn bộ), prefix="incr" cho Phần 2 (chỉ bài mới).
     """
     ensure_data_dir()
     output_path = os.path.join(DATA_DIR, f"extracted_batch_{batch_id}.json")
@@ -108,7 +157,7 @@ def cmd_extract_batch(batch_id: int):
         logger.info(f"Batch {batch_id} đã có kết quả, bỏ qua")
         return
 
-    all_articles = _load_all_raw()
+    all_articles = _load_all_raw(prefix=prefix)
     batch_size = settings.ARTICLES_PER_BATCH
     start = batch_id * batch_size
     end = start + batch_size
@@ -159,12 +208,16 @@ def cmd_extract_batch(batch_id: int):
 # PHASE 3: FINALIZE
 # ============================================================
 
-def cmd_finalize():
+def cmd_finalize(update_state: bool = False):
     """
     Gộp tất cả extracted_batch_*.json → normalize → upload MongoDB.
     Ghi 2 nơi:
       1. data/biology_rules_final.json (local artifact)
       2. MongoDB: harvest_snapshot (1 doc master) + biology_rules (per-rule)
+
+    update_state=True (chỉ dùng cho Phần 2): sau khi upload MongoDB thành công,
+    cập nhật last_refresh_at = mốc thời gian lúc bắt đầu job scrape-recent,
+    để lần refresh tháng sau chỉ lấy bài mới hơn mốc này.
     """
     ensure_data_dir()
     logger.info("=== FINALIZE: Gộp batches → Normalize → MongoDB ===")
@@ -199,6 +252,22 @@ def cmd_finalize():
     logger.info(f"Tổng rules từ {len(batch_files)} batch files: {len(all_rules)}")
 
     if len(all_rules) == 0:
+        if update_state:
+            # Phần 2: tháng này không có bài mới — vẫn hợp lệ, không phải lỗi.
+            # Cập nhật last_refresh_at để tháng sau không quét lại từ đầu.
+            logger.info("Phần 2: không có rule mới tháng này, vẫn cập nhật last_refresh_at")
+            if not settings.MONGODB_URI:
+                logger.warning("MONGODB_URI không được set — không thể cập nhật state")
+                return
+            uploader = MongoUploader()
+            start_marker = os.path.join(DATA_DIR, "_refresh_start.json")
+            new_ts = datetime.now(timezone.utc).isoformat()
+            if os.path.exists(start_marker):
+                with open(start_marker, "r") as f:
+                    new_ts = json.load(f).get("start", new_ts)
+            uploader.set_last_refresh_timestamp(new_ts)
+            uploader.close()
+            return
         logger.error("Không có rule nào được extract — kiểm tra lại các bước extract-batch")
         sys.exit(1)
 
@@ -234,6 +303,14 @@ def cmd_finalize():
         total_in_db = uploader.get_rule_count()
         logger.info(f"biology_rules collection: {upserted} upserted, {total_in_db} tổng")
 
+        if update_state:
+            start_marker = os.path.join(DATA_DIR, "_refresh_start.json")
+            new_ts = datetime.now(timezone.utc).isoformat()
+            if os.path.exists(start_marker):
+                with open(start_marker, "r") as f:
+                    new_ts = json.load(f).get("start", new_ts)
+            uploader.set_last_refresh_timestamp(new_ts)
+
         uploader.close()
 
     except Exception as e:
@@ -246,9 +323,9 @@ def cmd_finalize():
 # TIỆN ÍCH: Kiểm tra tổng số batches cần thiết
 # ============================================================
 
-def cmd_count_batches():
-    """In số batch cần thiết dựa trên dữ liệu raw đã scrape."""
-    all_articles = _load_all_raw()
+def cmd_count_batches(prefix: str = "raw"):
+    """In số batch cần thiết dựa trên dữ liệu đã scrape."""
+    all_articles = _load_all_raw(prefix=prefix)
     batch_size = settings.ARTICLES_PER_BATCH
     n_batches = (len(all_articles) + batch_size - 1) // batch_size
     print(f"TOTAL_ARTICLES={len(all_articles)}")
@@ -263,11 +340,26 @@ def cmd_count_batches():
 
 USAGE = """
 Cách dùng:
-  python main.py --scrape <source>         Cào dữ liệu (orions_arm | spec_evo | project_rho)
-  python main.py --extract-batch <id>      Xử lý batch LLM (id = 0, 1, 2, ...)
-  python main.py --finalize                Gộp → normalize → upload MongoDB
-  python main.py --count-batches           Kiểm tra số batches cần thiết
+  --- PHẦN 1: Baseline harvest (chạy 1 lần) ---
+  python main.py --scrape <source>            Cào toàn bộ (orions_arm | spec_evo | project_rho)
+  python main.py --extract-batch <id>         Xử lý batch LLM (id = 0, 1, 2, ...)
+  python main.py --finalize                   Gộp → normalize → upload MongoDB
+  python main.py --count-batches               Kiểm tra số batches cần thiết
+
+  --- PHẦN 2: Monthly refresh (chỉ bài mới/thay đổi) ---
+  python main.py --scrape-recent <source>      Cào bài mới/thay đổi kể từ lần refresh trước
+  python main.py --extract-batch <id> --prefix incr   Xử lý batch LLM cho dữ liệu incr_*
+  python main.py --count-batches --prefix incr Kiểm tra số batches cho dữ liệu incr_*
+  python main.py --finalize --update-state     Gộp → normalize → upload → cập nhật last_refresh_at
 """
+
+
+def _get_flag_value(flag: str, default=None):
+    if flag in sys.argv:
+        idx = sys.argv.index(flag)
+        if idx + 1 < len(sys.argv):
+            return sys.argv[idx + 1]
+    return default
 
 
 def main():
@@ -276,6 +368,7 @@ def main():
         sys.exit(1)
 
     cmd = sys.argv[1]
+    prefix = _get_flag_value("--prefix", "raw")
 
     if cmd == "--scrape":
         if len(sys.argv) < 3:
@@ -289,17 +382,23 @@ def main():
             sys.exit(1)
         cmd_scrape(sys.argv[2])
 
+    elif cmd == "--scrape-recent":
+        if len(sys.argv) < 3:
+            logger.error("Thiếu tên nguồn. Ví dụ: python main.py --scrape-recent orions_arm")
+            sys.exit(1)
+        cmd_scrape_recent(sys.argv[2])
+
     elif cmd == "--extract-batch":
         if len(sys.argv) < 3:
             logger.error("Thiếu batch ID. Ví dụ: python main.py --extract-batch 0")
             sys.exit(1)
-        cmd_extract_batch(int(sys.argv[2]))
+        cmd_extract_batch(int(sys.argv[2]), prefix=prefix)
 
     elif cmd == "--finalize":
-        cmd_finalize()
+        cmd_finalize(update_state="--update-state" in sys.argv)
 
     elif cmd == "--count-batches":
-        cmd_count_batches()
+        cmd_count_batches(prefix=prefix)
 
     else:
         logger.error(f"Lệnh không hợp lệ: {cmd}")
