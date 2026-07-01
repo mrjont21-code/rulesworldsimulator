@@ -163,7 +163,6 @@ jobs:
     outputs:
       batch_ids: ${{ steps.plan.outputs.batch_ids }}
       n_batches: ${{ steps.plan.outputs.n_batches }}
-
     steps:
       - uses: actions/checkout@v4
 
@@ -209,13 +208,11 @@ jobs:
     if: needs.plan-batches.outputs.n_batches != '0'
     runs-on: ubuntu-latest
     timeout-minutes: 25
-
     strategy:
       matrix:
         batch_id: ${{ fromJson(needs.plan-batches.outputs.batch_ids) }}
       fail-fast: false
-      max-parallel: 7  # song song tối đa = số key (tránh 429 chéo)
-
+      max-parallel: 7
     steps:
       - uses: actions/checkout@v4
 
@@ -255,7 +252,7 @@ jobs:
 
       - name: Upload batch result
         uses: actions/upload-artifact@v4
-        if: always()  # upload dù extract có lỗi một phần
+        if: always()
         with:
           name: extracted-batch-${{ matrix.batch_id }}
           path: data/extracted_batch_${{ matrix.batch_id }}.json
@@ -269,7 +266,6 @@ jobs:
     if: always() && !cancelled()
     runs-on: ubuntu-latest
     timeout-minutes: 15
-
     steps:
       - uses: actions/checkout@v4
 
@@ -280,16 +276,12 @@ jobs:
 
       - run: pip install -r requirements.txt
 
-      # download-artifact v4 với nhiều artifact tên khác nhau sẽ tạo subfolder
-      # mỗi artifact: data/extracted-batch-0/extracted_batch_0.json
-      # Dùng path gốc rồi flatten thủ công vào data/
       - name: Download tất cả extracted batches
         uses: actions/download-artifact@v4
         with:
           pattern: extracted-batch-*
           path: data/batches-raw/
 
-      # Flatten: di chuyển tất cả extracted_batch_*.json vào data/
       - name: Flatten batch files vào data/
         run: |
           mkdir -p data
