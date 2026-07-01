@@ -6,6 +6,7 @@ name: Harvest World Lore (Monthly Refresh - Phần 2)
 # lúc 02:00 UTC. cron "28-31" khớp mọi ngày có thể là cuối tháng; job
 # check_last_day lọc lại để chỉ thực sự chạy đúng 1 lần/tháng.
 # Có thể chạy tay bất cứ lúc nào để refresh ngay lập tức.
+
 on:
   schedule:
     - cron: '0 2 28-31 * *'
