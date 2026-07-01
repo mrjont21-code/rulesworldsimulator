@@ -1,5 +1,5 @@
 """
-Config cho Rulesworld Scraper - Pattern Tinnhanh
+Config cho Rulesworld Scraper - Anti-Ban Mode
 """
 import os
 
@@ -8,23 +8,27 @@ class Settings:
     WORK_MINUTES = 25
     BREAK_MINUTES = 15
     
-    # === SEARCH ===
-    LINKS_PER_SEARCH = 20  # Mỗi lần gọi ra 20 links
-    SEARCH_DELAY_SECONDS = 2
+    # === SEARCH (CHẬM LẠI) ===
+    LINKS_PER_SEARCH = 20
+    SEARCH_DELAY_SECONDS = 0  # Không dùng nữa, dùng stealth.human_delay()
+    
+    # === ANTI-BAN DELAYS ===
+    DELAY_BETWEEN_REQUESTS = 0  # Không dùng nữa
+    MIN_REQUEST_DELAY = 8.0     # Tối thiểu 8 giây giữa các request
+    MAX_REQUEST_DELAY = 20.0    # Tối đa 20 giây
+    MIN_KEYWORD_BREAK = 30.0    # Nghỉ tối thiểu 30s giữa keywords
+    MAX_KEYWORD_BREAK = 60.0    # Nghỉ tối đa 60s giữa keywords
     
     # === KEYWORDS ===
     KEYWORDS_FILE = "keywords.json"
-    KEYWORD_STATE_DIR = "keyword_states"  # Mỗi từ khóa 1 JSON
+    KEYWORD_STATE_DIR = "keyword_states"
     
     # === SCRAPING ===
-    DELAY_BETWEEN_REQUESTS = 1.5
     MIN_CONTENT_LENGTH = 300
     MIN_BIOLOGY_KEYWORDS = 2
     
-    # === SEARCH ENGINES ===
+    # === FILES ===
     ENGINES_FILE = "search_engines.json"
-    
-    # === BLACKBOOK ===
     BLACKBOOK_FILE = "blackbook.json"
     
     # === DATA DIRS ===
@@ -41,7 +45,7 @@ class Settings:
     MONGODB_COLLECTION_RULES = "biology_rules"
     MONGODB_COLLECTION_RUNS = "run_logs"
     
-    # === BIOLOGY KEYWORDS (để validate content) ===
+    # === BIOLOGY KEYWORDS ===
     BIOLOGY_KEYWORDS = [
         "biochemistry", "carbon", "silicon", "ammonia", "methane", 
         "protein", "dna", "rna", "cell", "organism", "evolution",
@@ -58,6 +62,5 @@ class Settings:
 
 settings = Settings()
 
-# Tạo dirs
 for d in [settings.DATA_DIR, settings.RAW_DIR, settings.QUEUE_DIR, settings.KEYWORD_STATE_DIR]:
     os.makedirs(d, exist_ok=True)
