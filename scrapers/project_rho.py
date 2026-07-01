@@ -1,13 +1,13 @@
 """
-ProjectRhoScraper - HTML scraping
+ProjectRhoScraper - Playwright headless browser
 Cào bảng dữ liệu và đoạn văn từ Project Rho
+ĐÃ CẬP NHẬT: Dùng Playwright vượt JS-challenge, URL đổi sang .php
 """
 import hashlib
-import requests
 import time
 import logging
-
 from bs4 import BeautifulSoup
+from playwright.sync_api import sync_playwright
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -27,23 +27,41 @@ class ProjectRhoScraper:
     def __init__(self):
         self.base_url = settings.PROJECT_RHO_BASE
         self.delay = settings.REQUEST_DELAY_SECONDS
-        self.session = requests.Session()
-        self.session.headers.update({
-            "User-Agent": "WorldLoreHarvester/2.0 (research bot; contact via github)"
-        })
 
     def scrape_page(self, page_name: str) -> list[dict]:
+        """
+        Dùng Playwright mở trang, đợi JS render xong, rồi bóc DOM.
+        """
         url = self.base_url + page_name
+        articles = []
 
         try:
-            resp = self.session.get(url, timeout=30)
-            resp.raise_for_status()
-            soup = BeautifulSoup(resp.text, "lxml")
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=settings.PLAYWRIGHT_HEADLESS)
+                page = browser.new_page()
+
+                # Truy cập trang, đợi JS render xong
+                page.goto(url, timeout=settings.PLAYWRIGHT_TIMEOUT, wait_until="networkidle")
+
+                # Đợi thêm 3 giây để JS challenge hoàn tất
+                time.sleep(3)
+
+                # Kiểm tra xem có bị chặn không
+                content = page.content()
+                if "Javascript is required" in content or "you are being redirected" in content.lower():
+                    logger.warning(f"ProjectRho - '{page_name}': Vẫn bị JS-challenge chặn")
+                    # Đợi thêm và thử reload
+                    time.sleep(5)
+                    page.reload(wait_until="networkidle")
+                    time.sleep(3)
+                    content = page.content()
+
+                soup = BeautifulSoup(content, "lxml")
+                browser.close()
+
         except Exception as e:
             logger.error(f"ProjectRho - Lỗi tải '{page_name}': {e}")
             return []
-
-        articles = []
 
         # --- Bảng dữ liệu ---
         for i, table in enumerate(soup.find_all("table")):
@@ -59,8 +77,8 @@ class ProjectRhoScraper:
 
         # --- Đoạn văn bản ---
         seen_texts: set[str] = set()
-        for p in soup.find_all("p"):
-            text = p.get_text(separator=" ", strip=True)
+        for p_tag in soup.find_all("p"):
+            text = p_tag.get_text(separator=" ", strip=True)
             if len(text) > 120 and self._has_biology_keywords(text):
                 key = text[:80]
                 if key not in seen_texts:
@@ -93,7 +111,6 @@ class ProjectRhoScraper:
                 if len(row_data) == len(headers):
                     data_rows.append(dict(zip(headers, row_data)))
                 else:
-                    # Pad hoặc cắt ngắn để khớp headers
                     padded = row_data[:len(headers)] + [""] * max(0, len(headers) - len(row_data))
                     data_rows.append(dict(zip(headers, padded)))
 
@@ -122,24 +139,27 @@ class ProjectRhoScraper:
 
     # ------------------------------------------------------------------
     # PHẦN 2: Incremental — Project Rho không có API nên dùng content-hash
-    # để phát hiện trang nào đã thay đổi kể từ lần cào trước.
     # ------------------------------------------------------------------
 
     def _page_hash(self, page_name: str) -> str | None:
         url = self.base_url + page_name
         try:
-            resp = self.session.get(url, timeout=30)
-            resp.raise_for_status()
-            return hashlib.md5(resp.text.encode("utf-8")).hexdigest()
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=settings.PLAYWRIGHT_HEADLESS)
+                page = browser.new_page()
+                page.goto(url, timeout=settings.PLAYWRIGHT_TIMEOUT, wait_until="networkidle")
+                time.sleep(3)
+                content = page.content()
+                browser.close()
+                return hashlib.md5(content.encode("utf-8")).hexdigest()
         except Exception as e:
             logger.error(f"ProjectRho - Lỗi hash '{page_name}': {e}")
             return None
 
     def scrape_recent(self, previous_hashes: dict) -> tuple[list[dict], dict]:
         """
-        So sánh hash nội dung trang với lần cào trước (previous_hashes).
-        Trang nào hash thay đổi (hoặc chưa từng cào) thì cào lại toàn bộ trang đó.
-        Trả về (articles_mới, new_hashes) để lưu lại cho lần sau.
+        So sánh hash nội dung trang với lần cào trước.
+        Trang nào hash thay đổi thì cào lại.
         """
         all_articles = []
         new_hashes = dict(previous_hashes)
