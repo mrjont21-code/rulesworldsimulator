@@ -11,4 +11,5 @@ jobs:
     uses: ./.github/workflows/harvest-core.yml
     with:
       skip_scrape: false
+      mode: full
     secrets: inherit

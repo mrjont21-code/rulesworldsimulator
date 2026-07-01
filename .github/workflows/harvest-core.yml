@@ -8,6 +8,11 @@ on:
         required: false
         default: false
         type: boolean
+      mode:
+        description: "'full' = Phần 1 cào toàn bộ | 'incremental' = Phần 2 chỉ cào bài mới/thay đổi"
+        required: false
+        default: 'full'
+        type: string
     secrets:
       GEMINI_KEY_1:
         required: true
@@ -52,14 +57,24 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Scrape Orion's Arm
-        run: python main.py --scrape orions_arm
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+        run: |
+          if [ "${{ inputs.mode }}" = "incremental" ]; then
+            python main.py --scrape-recent orions_arm
+          else
+            python main.py --scrape orions_arm
+          fi
 
       - name: Upload raw data
         uses: actions/upload-artifact@v4
         with:
           name: raw-orions
-          path: data/raw_orions.json
+          path: |
+            data/raw_orions.json
+            data/incr_orions.json
           retention-days: 3
+          if-no-files-found: ignore
 
   # ============================================================
   # JOB 1B: Scrape Speculative Evolution (~10 phút)
@@ -80,14 +95,24 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Scrape Speculative Evolution
-        run: python main.py --scrape spec_evo
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+        run: |
+          if [ "${{ inputs.mode }}" = "incremental" ]; then
+            python main.py --scrape-recent spec_evo
+          else
+            python main.py --scrape spec_evo
+          fi
 
       - name: Upload raw data
         uses: actions/upload-artifact@v4
         with:
           name: raw-spec-evo
-          path: data/raw_spec_evo.json
+          path: |
+            data/raw_spec_evo.json
+            data/incr_spec_evo.json
           retention-days: 3
+          if-no-files-found: ignore
 
   # ============================================================
   # JOB 1C: Scrape Project Rho (~3 phút)
@@ -108,14 +133,24 @@ jobs:
         run: pip install -r requirements.txt
 
       - name: Scrape Project Rho
-        run: python main.py --scrape project_rho
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+        run: |
+          if [ "${{ inputs.mode }}" = "incremental" ]; then
+            python main.py --scrape-recent project_rho
+          else
+            python main.py --scrape project_rho
+          fi
 
       - name: Upload raw data
         uses: actions/upload-artifact@v4
         with:
           name: raw-project-rho
-          path: data/raw_project_rho.json
+          path: |
+            data/raw_project_rho.json
+            data/incr_project_rho.json
           retention-days: 3
+          if-no-files-found: ignore
 
   # ============================================================
   # JOB 2: Tính số batches cần thiết
@@ -150,12 +185,14 @@ jobs:
           mkdir -p data
           mkdir -p data/raw-dl
           find data/raw-dl -name "raw_*.json" -exec mv {} data/ \; 2>/dev/null || true
-          ls -la data/raw_*.json 2>/dev/null || echo "CẢNH BÁO: Không có raw file!"
+          find data/raw-dl -name "incr_*.json" -exec mv {} data/ \; 2>/dev/null || true
+          ls -la data/raw_*.json data/incr_*.json 2>/dev/null || echo "CẢNH BÁO: Không có raw/incr file!"
 
       - name: Tính số batches
         id: plan
         run: |
-          output=$(python main.py --count-batches)
+          if [ "${{ inputs.mode }}" = "incremental" ]; then PREFIX=incr; else PREFIX=raw; fi
+          output=$(python main.py --count-batches --prefix $PREFIX)
           echo "$output"
           n=$(echo "$output" | grep N_BATCHES | cut -d= -f2)
           echo "n_batches=$n" >> $GITHUB_OUTPUT
@@ -200,7 +237,8 @@ jobs:
           mkdir -p data
           mkdir -p data/raw-dl
           find data/raw-dl -name "raw_*.json" -exec mv {} data/ \; 2>/dev/null || true
-          ls -la data/raw_*.json 2>/dev/null || echo "CẢNH BÁO: Không có raw file!"
+          find data/raw-dl -name "incr_*.json" -exec mv {} data/ \; 2>/dev/null || true
+          ls -la data/raw_*.json data/incr_*.json 2>/dev/null || echo "CẢNH BÁO: Không có raw/incr file!"
 
       - name: Extract batch ${{ matrix.batch_id }}
         env:
@@ -211,7 +249,9 @@ jobs:
           GEMINI_KEY_5: ${{ secrets.GEMINI_KEY_5 }}
           GEMINI_KEY_6: ${{ secrets.GEMINI_KEY_6 }}
           GEMINI_KEY_7: ${{ secrets.GEMINI_KEY_7 }}
-        run: python main.py --extract-batch ${{ matrix.batch_id }}
+        run: |
+          if [ "${{ inputs.mode }}" = "incremental" ]; then PREFIX=incr; else PREFIX=raw; fi
+          python main.py --extract-batch ${{ matrix.batch_id }} --prefix $PREFIX
 
       - name: Upload batch result
         uses: actions/upload-artifact@v4
@@ -262,15 +302,22 @@ jobs:
           echo "n_files=$n" >> "$GITHUB_ENV"
 
       - name: Normalize và upload MongoDB
-        if: env.n_files != '0'
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           GITHUB_RUN_ID: ${{ github.run_id }}
-        run: python main.py --finalize
-
-      - name: Không có batch mới
-        if: env.n_files == '0'
-        run: echo "⚠️ Không có extracted batch nào — bỏ qua finalize (không có nội dung mới tháng này)." >> $GITHUB_STEP_SUMMARY
+        run: |
+          if [ "${{ inputs.mode }}" = "incremental" ]; then
+            # Phần 2: vẫn chạy finalize dù n_files=0, để cập nhật last_refresh_at
+            # (cmd_finalize tự xử lý trường hợp 0 rule khi có --update-state)
+            if [ "$n_files" = "0" ]; then
+              echo "[]" > data/extracted_batch_0.json
+            fi
+            python main.py --finalize --update-state
+          elif [ "$n_files" != "0" ]; then
+            python main.py --finalize
+          else
+            echo "⚠️ Không có extracted batch nào — bỏ qua finalize (Phần 1 không có gì để upload)." >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Upload JSON master (artifact backup)
         uses: actions/upload-artifact@v4
