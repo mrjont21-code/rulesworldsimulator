@@ -135,7 +135,8 @@ jobs:
       - name: Flatten raw files vào data/
         run: |
           mkdir -p data
-          find data/raw-dl -name "raw_*.json" -exec mv {} data/ \;
+          mkdir -p data/raw-dl
+          find data/raw-dl -name "raw_*.json" -exec mv {} data/ \; 2>/dev/null || true
           ls -la data/raw_*.json 2>/dev/null || echo "CẢNH BÁO: Không có raw file!"
 
       - name: Tính số batches
@@ -184,7 +185,8 @@ jobs:
       - name: Flatten raw files vào data/
         run: |
           mkdir -p data
-          find data/raw-dl -name "raw_*.json" -exec mv {} data/ \;
+          mkdir -p data/raw-dl
+          find data/raw-dl -name "raw_*.json" -exec mv {} data/ \; 2>/dev/null || true
           ls -la data/raw_*.json 2>/dev/null || echo "CẢNH BÁO: Không có raw file!"
 
       - name: Extract batch ${{ matrix.batch_id }}
@@ -238,16 +240,24 @@ jobs:
       - name: Flatten batch files vào data/
         run: |
           mkdir -p data
-          find data/batches-raw -name "extracted_batch_*.json" -exec mv {} data/ \;
+          mkdir -p data/batches-raw
+          find data/batches-raw -name "extracted_batch_*.json" -exec mv {} data/ \; 2>/dev/null || true
           echo "=== Files trong data/ ==="
           ls -la data/extracted_batch_*.json 2>/dev/null || echo "CẢNH BÁO: Không tìm thấy file!"
-          echo "Tổng số batch files: $(ls data/extracted_batch_*.json 2>/dev/null | wc -l)"
+          n=$(ls data/extracted_batch_*.json 2>/dev/null | wc -l)
+          echo "Tổng số batch files: $n"
+          echo "n_files=$n" >> "$GITHUB_ENV"
 
       - name: Normalize và upload MongoDB
+        if: env.n_files != '0'
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           GITHUB_RUN_ID: ${{ github.run_id }}
         run: python main.py --finalize
+
+      - name: Không có batch mới
+        if: env.n_files == '0'
+        run: echo "⚠️ Không có extracted batch nào — bỏ qua finalize (không có nội dung mới tháng này)." >> $GITHUB_STEP_SUMMARY
 
       - name: Upload JSON master (artifact backup)
         uses: actions/upload-artifact@v4
