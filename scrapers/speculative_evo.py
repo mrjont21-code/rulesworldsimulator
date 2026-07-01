@@ -1,12 +1,12 @@
 """
-SpeculativeEvoScraper - Fandom MediaWiki API
+SpeculativeEvoScraper - Miraheze MediaWiki API
 Cào bài viết sinh vật giả tưởng từ Speculative Evolution wiki
+ĐÃ CẬP NHẬT: Chuyển từ Fandom sang Miraheze
 """
 import requests
 import time
 import re
 import logging
-
 from config import settings
 
 logger = logging.getLogger(__name__)
@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 class SpeculativeEvoScraper:
 
     def __init__(self):
+        # ĐÃ SỬA: Đổi sang Miraheze API
         self.api_url = settings.SPEC_EVO_API
         self.delay = settings.REQUEST_DELAY_SECONDS
         self.session = requests.Session()
@@ -61,6 +62,7 @@ class SpeculativeEvoScraper:
                 logger.error(f"SpecEvo - Lỗi category '{category_name}': {e}")
                 break
 
+        logger.info(f"SpecEvo - '{category_name}': {len(all_titles)} bài")
         return all_titles
 
     def get_page_content(self, title: str) -> dict | None:
@@ -77,6 +79,7 @@ class SpeculativeEvoScraper:
             data = resp.json()
 
             if "error" in data:
+                logger.debug(f"SpecEvo - Bỏ qua '{title}': {data['error']}")
                 return None
 
             parse_data = data.get("parse", {})
@@ -93,7 +96,7 @@ class SpeculativeEvoScraper:
                 "wikitext": wikitext,
                 "infobox": infobox,
                 "categories": [cat["*"] for cat in parse_data.get("categories", [])],
-                "url": f"https://speculativeevolution.fandom.com/wiki/{title.replace(' ', '_')}",
+                "url": f"https://speculativeevolution.miraheze.org/wiki/{title.replace(' ', '_')}",
             }
 
         except Exception as e:
@@ -102,12 +105,11 @@ class SpeculativeEvoScraper:
 
     def _parse_infobox(self, wikitext: str) -> dict:
         infobox = {}
-        # Lấy nội dung trong template đầu tiên (thường là infobox)
         template_match = re.search(r"\{\{([^}]+)\}\}", wikitext, re.DOTALL)
         if template_match:
             content = template_match.group(1)
             for line in content.split("\n"):
-                if "=" in line and line.strip().startswith("|"):
+                if "= " in line and line.strip().startswith("|"):
                     parts = line.split("=", 1)
                     if len(parts) == 2:
                         key = parts[0].strip().lstrip("|").strip()
@@ -130,6 +132,7 @@ class SpeculativeEvoScraper:
                 seen_titles.add(title)
 
                 if len(articles) >= settings.MAX_ARTICLES_TOTAL:
+                    logger.info("Đạt giới hạn MAX_ARTICLES_TOTAL, dừng scrape")
                     return articles
 
                 article = self.get_page_content(title)
