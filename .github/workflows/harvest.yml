@@ -130,8 +130,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: raw-*
-          path: data/
-          merge-multiple: true
+          path: data/raw-dl/
+
+      - name: Flatten raw files vào data/
+        run: |
+          mkdir -p data
+          find data/raw-dl -name "raw_*.json" -exec mv {} data/ \;
+          ls -la data/raw_*.json 2>/dev/null || echo "CẢNH BÁO: Không có raw file!"
 
       - name: Tính số batches
         id: plan
@@ -174,8 +179,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           pattern: raw-*
-          path: data/
-          merge-multiple: true
+          path: data/raw-dl/
+
+      - name: Flatten raw files vào data/
+        run: |
+          mkdir -p data
+          find data/raw-dl -name "raw_*.json" -exec mv {} data/ \;
+          ls -la data/raw_*.json 2>/dev/null || echo "CẢNH BÁO: Không có raw file!"
 
       - name: Extract batch ${{ matrix.batch_id }}
         env:
@@ -215,12 +225,23 @@ jobs:
 
       - run: pip install -r requirements.txt
 
+      # download-artifact v4 với nhiều artifact tên khác nhau sẽ tạo subfolder
+      # mỗi artifact: data/extracted-batch-0/extracted_batch_0.json
+      # Dùng path gốc rồi flatten thủ công vào data/
       - name: Download tất cả extracted batches
         uses: actions/download-artifact@v4
         with:
           pattern: extracted-batch-*
-          path: data/
-          merge-multiple: true
+          path: data/batches-raw/
+
+      # Flatten: di chuyển tất cả extracted_batch_*.json vào data/
+      - name: Flatten batch files vào data/
+        run: |
+          mkdir -p data
+          find data/batches-raw -name "extracted_batch_*.json" -exec mv {} data/ \;
+          echo "=== Files trong data/ ==="
+          ls -la data/extracted_batch_*.json 2>/dev/null || echo "CẢNH BÁO: Không tìm thấy file!"
+          echo "Tổng số batch files: $(ls data/extracted_batch_*.json 2>/dev/null | wc -l)"
 
       - name: Normalize và upload MongoDB
         env:
@@ -230,12 +251,14 @@ jobs:
 
       - name: Upload JSON master (artifact backup)
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: biology-rules-final-${{ github.run_id }}
           path: data/biology_rules_final.json
           retention-days: 90
 
       - name: Summary
+        if: always()
         run: |
           echo "## ✅ Harvest Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
@@ -244,4 +267,6 @@ jobs:
           if [ -f data/biology_rules_final.json ]; then
             rules=$(python3 -c "import json; d=json.load(open('data/biology_rules_final.json')); print(d['metadata']['total_rules'])")
             echo "- Rules this run: $rules" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "- ⚠️ biology_rules_final.json không tồn tại" >> $GITHUB_STEP_SUMMARY
           fi
