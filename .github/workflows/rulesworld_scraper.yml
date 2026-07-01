@@ -9,7 +9,7 @@ on:
         required: false
         default: '8'
         
-  # Hoặc chạy tự động hàng ngày (tùy chọn bật/tắt)
+  # Hoặc chạy tự động hàng ngày
   schedule:
     - cron: '0 2 * * *' # Chạy lúc 2h sáng UTC mỗi ngày
 
@@ -18,24 +18,19 @@ permissions:
   contents: write
 
 env:
-  # Lấy token từ GitHub Secrets
-  GITHUB_PAT: ${{ secrets.GITHUB_PAT }}
-  # Nếu dùng MongoDB, thêm secret MONGODB_URI vào repo
-  # MONGODB_URI: ${{ secrets.MONGODB_URI }}
-  PYTHONUNBUFFERED: '1' # Bắt buộc để thấy log realtime trên GitHub Actions
+  # KHẮC PHỤC LỖI NODE 20 DEPRECATED
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+  PYTHONUNBUFFERED: '1'
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    # Timeout tối đa của GitHub Actions là 6 giờ cho bản free
     timeout-minutes: 360 
     
     steps:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_PAT }} # Dùng PAT để checkout tránh bị limit push
-          fetch-depth: 0
+        # ĐÃ BỎ token ở đây. Sẽ dùng GITHUB_TOKEN mặc định của GitHub
 
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
@@ -53,12 +48,10 @@ jobs:
 
       - name: 🚀 Run Scraper Pipeline
         run: |
-          # Cấu hình Git trước (dự phòng nếu script có gọi git)
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Chạy pipeline. Truyền max_loops vào để giới hạn thời gian
-          # Mặc định 8 loops = 8 x (25p + 15p) = 320 phút (an toàn trong giới hạn 6h)
+          # Chạy pipeline
           python main.py --loop
         env:
           MAX_LOOPS: ${{ github.event.inputs.max_loops || '8' }}
@@ -77,13 +70,13 @@ jobs:
           # Thêm các file/thư mục cần commit (bỏ qua lỗi nếu chưa tồn tại)
           git add keyword_states/ data/ blackbook.json 2>/dev/null || true
           
-          # Dùng git status --porcelain để kiểm tra có file nào cần commit không
+          # Kiểm tra có file nào cần commit không
           if git status --porcelain | grep -qE '^[MADRC]'; then
             echo "📝 Phát hiện dữ liệu mới, đang commit..."
             git commit -m "🤖 [Auto] Update scraper data - $(date +'%Y-%m-%d %H:%M UTC')"
             
-            # Push bằng GITHUB_PAT
-            git push "https://x-access-token:${{ secrets.GITHUB_PAT }}@github.com/${{ github.repository }}" "HEAD:${{ github.ref }}"
+            # Dùng GITHUB_TOKEN mặc định để push (KHÔNG CẦN TỰ TẠO PAT NỮA)
+            git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" "HEAD:${{ github.ref }}"
             echo "✅ Push thành công!"
           else
             echo "✅ Không có dữ liệu JSON mới để push."
