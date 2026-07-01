@@ -1,31 +1,30 @@
 """
-T0: SEARCH - Anti-Ban Mode
-- Dùng curl_cffi giả lập TLS Chrome
+T0: SEARCH - Anti-Ban Mode (Playwright edition)
+- Dùng Chromium thật (Playwright) thay vì curl_cffi/httpx giả header
+- --disable-blink-features=AutomationControlled để xoá navigator.webdriver
+- Retry per engine với backoff ngắn (giống tinnhanh/t1_search.py)
 - Chỉ xử lý 1 keyword mỗi lần gọi
-- Delay 8-15s giữa các engines
+- Delay 8-20s giữa các engines (stealth.human_delay)
 """
 import os
 import json
 import logging
 import random
+import urllib.parse
 from datetime import datetime, timezone
-from urllib.parse import quote_plus, urlparse
-from bs4 import BeautifulSoup
+
+from playwright.sync_api import sync_playwright
 
 from config import settings
-from stealth import get_stealth_headers, human_delay
+from stealth import get_random_ua, human_delay
 
 logger = logging.getLogger(__name__)
 
-# Import curl_cffi (thư viện chống ban tốt nhất cho pure Python)
-try:
-    from curl_cffi import requests as cffi_requests
-    HAS_CFFI = True
-    logger.info("✅ curl_cffi loaded (TLS fingerprint spoofing enabled)")
-except ImportError:
-    import httpx
-    HAS_CFFI = False
-    logger.warning("⚠️  curl_cffi not found, fallback to httpx (easier to get banned)")
+# Trials per engine trước khi bỏ cuộc. IP của GitHub Actions bị rate-limit/
+# CAPTCHA thường xuyên hơn IP dân dụng -> 1 lần retry với backoff ngắn cứu
+# được một phần đáng kể các lần bị chặn tạm thời.
+MAX_ENGINE_ATTEMPTS = 2
+RETRY_DELAY_RANGE_MS = (1500, 3500)
 
 
 class T0Search:
@@ -52,24 +51,10 @@ class T0Search:
         with open(settings.BLACKBOOK_FILE, 'w', encoding='utf-8') as f:
             json.dump(self.blackbook, f, indent=2, ensure_ascii=False)
 
-    def _create_session(self):
-        """Tạo session mới với headers ngụy trang cho MỖI request"""
-        headers = get_stealth_headers()
-        
-        if HAS_CFFI:
-            # curl_cffi: Giả lập TLS fingerprint của Chrome 120
-            session = cffi_requests.Session(impersonate="chrome120")
-            session.headers.update(headers)
-            return session
-        else:
-            # Fallback httpx
-            session = httpx.Client(headers=headers, timeout=20.0, follow_redirects=True)
-            return session
-
     def get_keyword_state(self, keyword: str) -> dict:
         normalized = self._normalize_keyword(keyword)
         state_path = os.path.join(settings.KEYWORD_STATE_DIR, f"{normalized}.json")
-        
+
         default_state = {
             "keyword": keyword,
             "normalized": normalized,
@@ -81,12 +66,12 @@ class T0Search:
             "run_count": 0,
             "is_exhausted": False
         }
-        
+
         if os.path.exists(state_path):
             try:
                 with open(state_path, 'r', encoding='utf-8') as f:
                     return json.load(f)
-            except:
+            except Exception:
                 return default_state
         return default_state
 
@@ -113,147 +98,151 @@ class T0Search:
     def _get_next_keyword(self, keywords: list[str]) -> tuple[str, dict] | None:
         """Lấy keyword tiếp theo chưa exhausted"""
         keyword_states = [(kw, self.get_keyword_state(kw)) for kw in keywords]
-        
+
         def sort_key(item):
             kw, state = item
             exhausted = state.get("is_exhausted", False)
             last_run = state.get("last_run") or "0000"
             return (0 if not exhausted else 1, last_run)
-        
+
         keyword_states.sort(key=sort_key)
-        
+
         for kw, state in keyword_states:
             if not state.get("is_exhausted", False):
                 return (kw, state)
-        
-        # Reset all
+
         logger.warning("⚠️  Tất cả keywords exhausted, reset tất cả")
         for kw, state in keyword_states:
             state["is_exhausted"] = False
             self.save_keyword_state(state)
         return (keyword_states[0][0], keyword_states[0][1])
 
-    def search_startpage(self, session, keyword: str) -> list[dict]:
-        """Search Startpage với session đã ngụy trang"""
-        links = []
-        try:
-            if HAS_CFFI:
-                resp = session.post(
-                    "https://www.startpage.com/sp/search",
-                    data={"query": keyword, "cat": "web"},
-                    timeout=20
-                )
-            else:
-                resp = session.post(
-                    "https://www.startpage.com/sp/search",
-                    data={"query": keyword, "cat": "web"},
-                    timeout=20
-                )
-            
-            soup = BeautifulSoup(resp.text, "lxml")
-            for a in soup.find_all("a", class_="w-gl__result-url"):
-                href = a.get("href", "")
-                if href.startswith("http"):
-                    links.append({"url": href, "title": a.get_text(strip=True)[:100], "engine": "startpage"})
-        except Exception as e:
-            logger.warning(f"   Startpage failed: {e}")
-        return links
+    def _unwrap_redirect(self, href: str) -> str:
+        """Google/Startpage đôi khi bọc link thật trong /url?q=<real>&..."""
+        if href.startswith("/url?") or "google.com/url?" in href:
+            parsed = urllib.parse.urlparse(href)
+            qs = urllib.parse.parse_qs(parsed.query)
+            if "q" in qs and qs["q"]:
+                return qs["q"][0]
+        return href
 
-    def search_brave(self, session, keyword: str) -> list[dict]:
-        """Search Brave"""
-        links = []
-        try:
-            encoded = quote_plus(keyword)
-            url = f"https://search.brave.com/search?q={encoded}"
-            resp = session.get(url, timeout=20)
-            soup = BeautifulSoup(resp.text, "lxml")
-            
-            for div in soup.find_all("div", class_="snippet"):
-                a = div.find("a")
-                if a and a.get("href", "").startswith("http") and "brave.com" not in a["href"]:
-                    links.append({"url": a["href"], "title": a.get_text(strip=True)[:100], "engine": "brave"})
-        except Exception as e:
-            logger.warning(f"   Brave failed: {e}")
-        return links
+    def _build_search_url(self, engine: dict, keyword: str) -> str:
+        encoded = urllib.parse.quote_plus(keyword)
+        return engine["url_template"].format(query=encoded)
 
-    def search_duckduckgo(self, session, keyword: str) -> list[dict]:
-        """Search DuckDuckGo HTML"""
-        links = []
-        try:
-            encoded = quote_plus(keyword)
-            url = f"https://html.duckduckgo.com/html/?q={encoded}"
-            resp = session.get(url, timeout=20)
-            soup = BeautifulSoup(resp.text, "lxml")
-            
-            for a in soup.find_all("a", class_="result__a"):
-                href = a.get("href", "")
-                if href.startswith("http") and "duckduckgo.com" not in href:
-                    links.append({"url": href, "title": a.get_text(strip=True)[:100], "engine": "duckduckgo"})
-        except Exception as e:
-            logger.warning(f"   DuckDuckGo failed: {e}")
-        return links
+    def _fetch_links_from_engine(self, page, engine: dict, keyword: str) -> list[dict]:
+        """
+        Mở trang search bằng Chromium thật (Playwright), đọc DOM đã render.
+        Retry MAX_ENGINE_ATTEMPTS lần với backoff ngắn nếu bị chặn/timeout.
+        """
+        engine_name = engine.get("name", "Engine")
+        link_selector = engine.get("link_selector", "a[href]")
+        exclude_domain = engine.get("exclude_domain_in_href", "")
+        timeout_ms = 20000
+
+        # POST (Startpage) không đi qua page.goto trực tiếp được -> dùng GET
+        # tương đương của Startpage khi cần (fallback query string).
+        if engine.get("method", "GET").upper() == "POST":
+            search_url = engine["url_template"] + "?query=" + urllib.parse.quote_plus(keyword) + "&cat=web"
+        else:
+            search_url = self._build_search_url(engine, keyword)
+
+        last_error = None
+        for attempt in range(1, MAX_ENGINE_ATTEMPTS + 1):
+            try:
+                page.goto(search_url, wait_until="domcontentloaded", timeout=timeout_ms)
+                page.wait_for_timeout(random.randint(1200, 2500))  # để JS render xong
+
+                found, seen = [], set()
+                for a in page.locator(link_selector).all():
+                    href = a.get_attribute("href") or ""
+                    href = self._unwrap_redirect(href)
+                    title = (a.inner_text() or "").strip()
+
+                    if not href.startswith("http"):
+                        continue
+                    if exclude_domain and exclude_domain in href.lower():
+                        continue
+                    if href in seen:
+                        continue
+
+                    seen.add(href)
+                    found.append({"url": href, "title": title[:100], "engine": engine_name.lower()})
+
+                return found
+            except Exception as e:
+                last_error = e
+                logger.warning(f"   {engine_name} attempt {attempt}/{MAX_ENGINE_ATTEMPTS} failed: {e}")
+                page.wait_for_timeout(random.randint(*RETRY_DELAY_RANGE_MS))
+
+        logger.warning(f"   {engine_name} gave up after {MAX_ENGINE_ATTEMPTS} tries ({last_error})")
+        return []
 
     def search_single_keyword(self, keyword: str) -> list[dict]:
         """
-        Search 1 keyword duy nhất qua cascade engines
-        Dừng khi đủ 20 links
-        Delay 8-15s giữa các engines
+        Search 1 keyword qua cascade engines bằng Chromium thật.
+        Dừng khi đủ LINKS_PER_SEARCH links. Delay 8-20s giữa các engines.
         """
         all_links = []
         seen_urls = set()
         banned_domains = self.engines_config.get("banned_domains", [])
         priority_sources = self.engines_config.get("priority_sources", [])
-        
-        search_fns = [
-            ("Startpage", self.search_startpage),
-            ("Brave", self.search_brave),
-            ("DuckDuckGo", self.search_duckduckgo),
-        ]
-        
-        for engine_name, search_fn in search_fns:
-            if len(all_links) >= settings.LINKS_PER_SEARCH:
-                break
-            
-            # TẠO SESSION MỚI CHO MỖI ENGINE (đổi UA, đổi TLS fingerprint)
-            session = self._create_session()
-            
-            logger.info(f"   🔍 Thử {engine_name}...")
-            try:
-                engine_links = search_fn(session, keyword)
-                
+        engines = sorted(self.engines_config.get("engines", []), key=lambda x: x.get("priority", 99))
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True,
+                args=[
+                    "--no-sandbox",
+                    "--disable-blink-features=AutomationControlled",  # xoá navigator.webdriver
+                    "--disable-dev-shm-usage",
+                ],
+            )
+            context = browser.new_context(
+                user_agent=get_random_ua(),
+                viewport={"width": 1366, "height": 768},
+                locale="en-US",
+            )
+            page = context.new_page()
+
+            for engine in engines:
+                if len(all_links) >= settings.LINKS_PER_SEARCH:
+                    break
+
+                logger.info(f"   🔍 Thử {engine.get('name')}...")
+                engine_links = self._fetch_links_from_engine(page, engine, keyword)
+
+                new_count = 0
                 for link in engine_links:
                     url = link["url"]
-                    domain = urlparse(url).netloc.lower()
-                    
+                    domain = urllib.parse.urlparse(url).netloc.lower()
+
                     if any(b in domain for b in banned_domains):
                         continue
                     if self.blackbook.get(domain, {}).get("status") == "banned":
                         continue
                     if url in seen_urls:
                         continue
-                    
+
                     seen_urls.add(url)
                     link["is_priority_source"] = any(p in domain for p in priority_sources)
                     link["domain"] = domain
                     link["keyword"] = keyword
                     link["searched_at"] = datetime.now(timezone.utc).isoformat()
                     all_links.append(link)
-                
-                logger.info(f"   ✅ {engine_name}: +{len(engine_links)} links (tổng: {len(all_links)})")
-            finally:
-                session.close()
-            
-            # DELAY DÀI giữa các engines
-            if len(all_links) < settings.LINKS_PER_SEARCH:
-                human_delay(
-                    min_sec=settings.MIN_REQUEST_DELAY,
-                    max_sec=settings.MAX_REQUEST_DELAY
-                )
-        
+                    new_count += 1
+
+                logger.info(f"   ✅ {engine.get('name')}: +{new_count} links (tổng: {len(all_links)})")
+
+                if len(all_links) < settings.LINKS_PER_SEARCH:
+                    human_delay(min_sec=settings.MIN_REQUEST_DELAY, max_sec=settings.MAX_REQUEST_DELAY)
+
+            page.close()
+            browser.close()
+
         return all_links[:settings.LINKS_PER_SEARCH]
 
     def filter_new_links(self, links: list[dict], state: dict) -> list[dict]:
-        """Lọc bỏ links đã từng thấy"""
         seen = set(state.get("found_urls", []))
         return [l for l in links if l["url"] not in seen]
 
@@ -264,48 +253,44 @@ def run_t0_single_keyword(keywords: list[str]) -> tuple[str, list[dict], dict] |
     Trả về: (keyword, new_links, state) hoặc None nếu hết giờ/hết keyword
     """
     searcher = T0Search()
-    
+
     if searcher.session_start is None:
         searcher.session_start = datetime.now(timezone.utc).timestamp()
-    
+
     if not searcher._is_time_remaining():
         return None
-    
+
     result = searcher._get_next_keyword(keywords)
     if result is None:
         return None
-    
+
     keyword, state = result
-    
+
     logger.info(f"\n{'='*60}")
     logger.info(f"🔑 KEYWORD: {keyword}")
     logger.info(f"   Lịch sử: Tìm {state.get('total_links_found',0)} / Cào {state.get('links_scraped',0)}")
     logger.info(f"{'='*60}")
-    
-    # Search
+
     links = searcher.search_single_keyword(keyword)
     state["total_links_found"] = state.get("total_links_found", 0) + len(links)
-    
-    # Filter mới
+
     new_links = searcher.filter_new_links(links, state)
-    
-    # Cập nhật found_urls
+
     for link in new_links:
         if link["url"] not in state.get("found_urls", []):
             state.setdefault("found_urls", []).append(link["url"])
-    
-    # Check exhausted
+
     if not new_links and state.get("total_links_found", 0) > 50:
         state["is_exhausted"] = True
-        logger.warning(f"   ⚠️ Keyword EXHAUSTED")
-    
+        logger.warning("   ⚠️ Keyword EXHAUSTED")
+
     state["run_count"] = state.get("run_count", 0) + 1
     searcher.save_keyword_state(state)
     searcher._save_blackbook()
-    
+
     logger.info(f"   📊 Tìm: {len(links)}, Mới: {len(new_links)}")
-    
+
     if not new_links:
         return None
-    
+
     return (keyword, new_links, state)
