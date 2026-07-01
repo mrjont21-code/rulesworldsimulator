@@ -1,7 +1,7 @@
 """
-SpeculativeEvoScraper - Miraheze MediaWiki API
-Cào bài viết sinh vật giả tưởng từ Speculative Evolution wiki
-ĐÃ CẬP NHẬT: Chuyển từ Fandom sang Miraheze
+SpeculativeEvoScraper - Fandom MediaWiki API
+ĐÃ XÁC NHẬN QUA DEBUG: API vẫn hoạt động (status 200, JSON hợp lệ)
+Thêm logic tự động tìm category names đúng
 """
 import requests
 import time
@@ -13,9 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class SpeculativeEvoScraper:
-
     def __init__(self):
-        # ĐÃ SỬA: Đổi sang Miraheze API
         self.api_url = settings.SPEC_EVO_API
         self.delay = settings.REQUEST_DELAY_SECONDS
         self.session = requests.Session()
@@ -62,7 +60,6 @@ class SpeculativeEvoScraper:
                 logger.error(f"SpecEvo - Lỗi category '{category_name}': {e}")
                 break
 
-        logger.info(f"SpecEvo - '{category_name}': {len(all_titles)} bài")
         return all_titles
 
     def get_page_content(self, title: str) -> dict | None:
@@ -79,7 +76,6 @@ class SpeculativeEvoScraper:
             data = resp.json()
 
             if "error" in data:
-                logger.debug(f"SpecEvo - Bỏ qua '{title}': {data['error']}")
                 return None
 
             parse_data = data.get("parse", {})
@@ -96,7 +92,7 @@ class SpeculativeEvoScraper:
                 "wikitext": wikitext,
                 "infobox": infobox,
                 "categories": [cat["*"] for cat in parse_data.get("categories", [])],
-                "url": f"https://speculativeevolution.miraheze.org/wiki/{title.replace(' ', '_')}",
+                "url": f"https://speculativeevolution.fandom.com/wiki/{title.replace(' ', '_')}",
             }
 
         except Exception as e:
@@ -109,7 +105,7 @@ class SpeculativeEvoScraper:
         if template_match:
             content = template_match.group(1)
             for line in content.split("\n"):
-                if "= " in line and line.strip().startswith("|"):
+                if "=" in line and line.strip().startswith("|"):
                     parts = line.split("=", 1)
                     if len(parts) == 2:
                         key = parts[0].strip().lstrip("|").strip()
@@ -119,11 +115,79 @@ class SpeculativeEvoScraper:
                             infobox[key] = val
         return infobox
 
+    def _find_valid_categories(self) -> list[str]:
+        """Tự động tìm các category names hợp lệ trên wiki"""
+        logger.info("🔍 SpecEvo - Đang tìm category names hợp lệ...")
+
+        # Thử nhiều category names khả dĩ
+        test_categories = [
+            "Species", "Creatures", "Organisms", "Animals", "Plants",
+            "Alien_life", "Biology", "Ecosystems", "Xenobiology",
+            "Extraterrestrial_life", "Fictional_organisms",
+        ]
+
+        valid_categories = []
+        for cat in test_categories:
+            params = {
+                "action": "query",
+                "list": "categorymembers",
+                "cmtitle": f"Category:{cat}",
+                "cmlimit": 1,
+                "format": "json",
+            }
+            try:
+                resp = self.session.get(self.api_url, params=params, timeout=15)
+                data = resp.json()
+                members = data.get("query", {}).get("categorymembers", [])
+                if members:
+                    valid_categories.append(cat)
+                    logger.info(f"  ✅ Category '{cat}': {len(members)}+ bài")
+            except Exception as e:
+                logger.debug(f"  ❌ Category '{cat}': {e}")
+
+            time.sleep(0.5)
+
+        # Nếu không tìm được category nào, thử lấy tất cả categories
+        if not valid_categories:
+            logger.info("  ⚠️ Không tìm được category từ danh sách test, thử lấy tất cả...")
+            params = {
+                "action": "query",
+                "list": "allcategories",
+                "aclimit": 500,
+                "format": "json",
+            }
+            try:
+                resp = self.session.get(self.api_url, params=params, timeout=15)
+                data = resp.json()
+                all_cats = data.get("query", {}).get("allcategories", [])
+
+                # Lọc categories liên quan đến sinh học
+                bio_keywords = ["species", "organism", "creature", "animal", "plant", "life", "bio", "eco"]
+                for cat in all_cats:
+                    cat_name = cat.get("*", "")
+                    if any(kw in cat_name.lower() for kw in bio_keywords):
+                        valid_categories.append(cat_name)
+                        logger.info(f"  ✅ Tìm thấy: {cat_name}")
+
+            except Exception as e:
+                logger.error(f"  ❌ Lỗi lấy allcategories: {e}")
+
+        logger.info(f"📊 Tìm thấy {len(valid_categories)} categories hợp lệ")
+        return valid_categories
+
     def scrape_all(self) -> list[dict]:
         articles = []
         seen_titles: set[str] = set()
 
-        for category in settings.SPEC_EVO_CATEGORIES:
+        # Tìm category names hợp lệ
+        valid_categories = self._find_valid_categories()
+
+        # Nếu vẫn không có, dùng categories từ settings
+        if not valid_categories:
+            logger.warning("⚠️ Không tìm được category hợp lệ, dùng categories từ settings")
+            valid_categories = settings.SPEC_EVO_CATEGORIES
+
+        for category in valid_categories:
             titles = self.get_category_members(category)
 
             for title in titles:
@@ -132,7 +196,6 @@ class SpeculativeEvoScraper:
                 seen_titles.add(title)
 
                 if len(articles) >= settings.MAX_ARTICLES_TOTAL:
-                    logger.info("Đạt giới hạn MAX_ARTICLES_TOTAL, dừng scrape")
                     return articles
 
                 article = self.get_page_content(title)
@@ -144,12 +207,10 @@ class SpeculativeEvoScraper:
         logger.info(f"SpeculativeEvo tổng cộng: {len(articles)} bài")
         return articles
 
-    # ------------------------------------------------------------------
-    # PHẦN 2: Incremental — chỉ lấy bài mới/sửa đổi sau since_iso
-    # ------------------------------------------------------------------
-
+    # ============================================================
+    # PHẦN 2: INCREMENTAL
+    # ============================================================
     def get_touched_timestamps(self, titles: list[str]) -> dict:
-        """Trả về {title: touched_iso} bằng prop=info, gộp 50 title/call."""
         result = {}
         for i in range(0, len(titles), 50):
             chunk = titles[i:i + 50]
@@ -175,14 +236,14 @@ class SpeculativeEvoScraper:
         return result
 
     def scrape_recent(self, since_iso: str) -> list[dict]:
-        """
-        Chỉ cào bài viết được sửa đổi sau thời điểm since_iso (ISO 8601, UTC).
-        Dùng cho Phần 2 - monthly refresh.
-        """
         articles = []
         seen_titles: set[str] = set()
 
-        for category in settings.SPEC_EVO_CATEGORIES:
+        valid_categories = self._find_valid_categories()
+        if not valid_categories:
+            valid_categories = settings.SPEC_EVO_CATEGORIES
+
+        for category in valid_categories:
             titles = self.get_category_members(category)
             new_titles = [t for t in titles if t not in seen_titles]
             seen_titles.update(new_titles)
