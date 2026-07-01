@@ -1,184 +1,141 @@
 """
-Test Scraper - Kiểm tra từng nguồn trước khi lắp vào pipeline
-Chỉ scrape, không dùng LLM, không dùng MongoDB
-Output: File JSON + thống kê ra console
+Debug Radar - Khảo sát địa hình 3 nguồn trước khi viết scraper
+In ra status code + content preview cho từng URL
 """
+import requests
 import json
-import os
 import sys
-import logging
-from datetime import datetime
+import time
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-)
-logger = logging.getLogger("test_scrape")
+# Danh sách URL cần thăm dò
+URLS_TO_PROBE = {
+    "Orion's Arm": [
+        ("MediaWiki API (cũ)", "https://orionsarm.com/api.php?action=query&meta=siteinfo&format=json"),
+        ("MediaWiki API www", "https://www.orionsarm.com/api.php?action=query&meta=siteinfo&format=json"),
+        ("Wiki path", "https://orionsarm.com/wiki/api.php?action=query&meta=siteinfo&format=json"),
+        ("Encyclopedia home", "https://www.orionsarm.com/encyclopedia"),
+        ("Main site", "https://www.orionsarm.com/"),
+        ("Sitemap", "https://www.orionsarm.com/sitemap.xml"),
+    ],
+    "Speculative Evolution": [
+        ("Fandom API (cũ)", "https://speculativeevolution.fandom.com/api.php?action=query&meta=siteinfo&format=json"),
+        ("Fandom home", "https://speculativeevolution.fandom.com/wiki/Main_Page"),
+        ("Miraheze API (mới)", "https://speculativeevolution.miraheze.org/w/api.php?action=query&meta=siteinfo&format=json"),
+        ("Miraheze home", "https://speculativeevolution.miraheze.org/wiki/Main_Page"),
+        ("Miraheze Species cat", "https://speculativeevolution.miraheze.org/w/api.php?action=query&list=categorymembers&cmtitle=Category:Species&cmlimit=5&format=json"),
+    ],
+    "Project Rho": [
+        ("aliens.html (cũ)", "http://www.projectrho.com/public_html/rocket/aliens.html"),
+        ("aliens.php (mới)", "http://www.projectrho.com/public_html/rocket/aliens.php"),
+        ("HTTPS aliens.php", "https://www.projectrho.com/public_html/rocket/aliens.php"),
+        ("HTTPS aliens.html", "https://www.projectrho.com/public_html/rocket/aliens.html"),
+        ("Home", "https://www.projectrho.com/"),
+    ],
+}
 
 
-def test_orions_arm():
-    """Test scrape Orion's Arm"""
-    logger.info("=" * 60)
-    logger.info("TEST: Orion's Arm")
-    logger.info("=" * 60)
+def probe_url(name: str, url: str) -> dict:
+    """Thăm dò 1 URL, trả về thông tin"""
+    result = {"name": name, "url": url, "status": None, "content_type": None, "preview": "", "error": None}
     
     try:
-        from scrapers.orions_arm import OrionsArmScraper
+        headers = {"User-Agent": "Mozilla/5.0 (research-bot/2.0)"}
+        resp = requests.get(url, headers=headers, timeout=15, allow_redirects=True)
+        result["status"] = resp.status_code
+        result["content_type"] = resp.headers.get("content-type", "unknown")
+        result["final_url"] = resp.url
         
-        scraper = OrionsArmScraper()
-        articles = scraper.scrape_all()
+        # Preview: 300 chars đầu
+        text = resp.text[:300].replace("\n", " ").replace("\r", " ")
+        result["preview"] = text
         
-        logger.info(f"✅ Orion's Arm: Lấy được {len(articles)} bài")
-        
-        if articles:
-            logger.info(f"  - Bài đầu tiên: {articles[0].get('title', 'N/A')}")
-            logger.info(f"  - URL: {articles[0].get('url', 'N/A')}")
-            logger.info(f"  - Độ dài content: {len(articles[0].get('content', ''))} ký tự")
-        
-        return articles
-        
+        # Nếu là JSON, parse thử
+        if "json" in result["content_type"].lower():
+            try:
+                data = resp.json()
+                result["is_valid_json"] = True
+                result["json_keys"] = list(data.keys()) if isinstance(data, dict) else "array"
+            except:
+                result["is_valid_json"] = False
+        else:
+            result["is_valid_json"] = False
+            
     except Exception as e:
-        logger.error(f"❌ Orion's Arm lỗi: {e}")
-        import traceback
-        traceback.print_exc()
-        return []
-
-
-def test_spec_evo():
-    """Test scrape Speculative Evolution"""
-    logger.info("=" * 60)
-    logger.info("TEST: Speculative Evolution")
-    logger.info("=" * 60)
+        result["error"] = str(e)
     
-    try:
-        from scrapers.speculative_evo import SpeculativeEvoScraper
-        
-        scraper = SpeculativeEvoScraper()
-        articles = scraper.scrape_all()
-        
-        logger.info(f"✅ Speculative Evolution: Lấy được {len(articles)} bài")
-        
-        if articles:
-            logger.info(f"  - Bài đầu tiên: {articles[0].get('title', 'N/A')}")
-            logger.info(f"  - URL: {articles[0].get('url', 'N/A')}")
-            logger.info(f"  - Độ dài wikitext: {len(articles[0].get('wikitext', ''))} ký tự")
-        
-        return articles
-        
-    except Exception as e:
-        logger.error(f"❌ Speculative Evolution lỗi: {e}")
-        import traceback
-        traceback.print_exc()
-        return []
-
-
-def test_project_rho():
-    """Test scrape Project Rho"""
-    logger.info("=" * 60)
-    logger.info("TEST: Project Rho")
-    logger.info("=" * 60)
-    
-    try:
-        from scrapers.project_rho import ProjectRhoScraper
-        
-        scraper = ProjectRhoScraper()
-        articles = scraper.scrape_all()
-        
-        logger.info(f"✅ Project Rho: Lấy được {len(articles)} mục")
-        
-        if articles:
-            logger.info(f"  - Mục đầu tiên: {articles[0].get('title', 'N/A')}")
-            logger.info(f"  - URL: {articles[0].get('url', 'N/A')}")
-            logger.info(f"  - Type: {articles[0].get('type', 'N/A')}")
-        
-        return articles
-        
-    except Exception as e:
-        logger.error(f"❌ Project Rho lỗi: {e}")
-        import traceback
-        traceback.print_exc()
-        return []
-
-
-def save_results(results: dict, output_dir: str = "test_output"):
-    """Lưu kết quả test ra file JSON"""
-    os.makedirs(output_dir, exist_ok=True)
-    
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
-    for source, articles in results.items():
-        filename = f"{output_dir}/test_{source}_{timestamp}.json"
-        with open(filename, "w", encoding="utf-8") as f:
-            json.dump(articles, f, ensure_ascii=False, indent=2)
-        logger.info(f"💾 Đã lưu {len(articles)} bài → {filename}")
-    
-    # Lưu summary
-    summary = {
-        "timestamp": timestamp,
-        "sources": {
-            source: {
-                "count": len(articles),
-                "first_title": articles[0].get("title", "N/A") if articles else None,
-                "first_url": articles[0].get("url", "N/A") if articles else None,
-            }
-            for source, articles in results.items()
-        }
-    }
-    
-    summary_file = f"{output_dir}/test_summary_{timestamp}.json"
-    with open(summary_file, "w", encoding="utf-8") as f:
-        json.dump(summary, f, ensure_ascii=False, indent=2)
-    
-    logger.info(f"💾 Summary → {summary_file}")
-    return summary
+    return result
 
 
 def main():
-    logger.info("🚀 BẮT ĐẦU TEST SCRAPE")
-    logger.info("")
+    print("=" * 80)
+    print("🔍 DEBUG RADAR - KHẢO SÁT ĐỊA HÌNH 3 NGUỒN")
+    print("=" * 80)
+    print()
     
-    # Parse arguments
-    sources_to_test = sys.argv[1:] if len(sys.argv) > 1 else ["all"]
+    all_results = {}
     
-    results = {}
+    for source_name, urls in URLS_TO_PROBE.items():
+        print(f"\n{'='*80}")
+        print(f"📡 NGUỒN: {source_name}")
+        print(f"{'='*80}")
+        
+        results = []
+        for probe_name, url in urls:
+            print(f"\n  🎯 {probe_name}")
+            print(f"     URL: {url}")
+            
+            r = probe_url(probe_name, url)
+            results.append(r)
+            
+            if r["error"]:
+                print(f"     ❌ LỖI: {r['error']}")
+            else:
+                print(f"     Status: {r['status']}")
+                print(f"     Content-Type: {r['content_type']}")
+                if r.get("final_url") != url:
+                    print(f"     Redirect → {r['final_url']}")
+                print(f"     JSON hợp lệ: {r.get('is_valid_json', 'N/A')}")
+                if r.get("json_keys"):
+                    print(f"     JSON keys: {r['json_keys']}")
+                print(f"     Preview: {r['preview'][:200]}...")
+            
+            time.sleep(1)  # Lịch sự
+        
+        all_results[source_name] = results
     
-    if "all" in sources_to_test or "orions" in sources_to_test:
-        results["orions_arm"] = test_orions_arm()
-        logger.info("")
+    # Lưu kết quả chi tiết
+    output_file = "debug_results.json"
+    with open(output_file, "w", encoding="utf-8") as f:
+        json.dump(all_results, f, ensure_ascii=False, indent=2)
     
-    if "all" in sources_to_test or "spec_evo" in sources_to_test:
-        results["spec_evo"] = test_spec_evo()
-        logger.info("")
+    print(f"\n{'='*80}")
+    print(f"💾 Kết quả chi tiết đã lưu → {output_file}")
+    print(f"{'='*80}")
     
-    if "all" in sources_to_test or "project_rho" in sources_to_test:
-        results["project_rho"] = test_project_rho()
-        logger.info("")
+    # Phân tích và đưa ra kết luận
+    print(f"\n📋 KẾT LUẬN:")
+    print("-" * 80)
     
-    # Lưu kết quả
-    summary = save_results(results)
+    # Orion's Arm
+    oa_results = all_results.get("Orion's Arm", [])
+    working_oa = [r for r in oa_results if r.get("status") == 200]
+    print(f"\n🔸 Orion's Arm: {len(working_oa)}/{len(oa_results)} URL hoạt động")
+    for r in working_oa:
+        print(f"    ✅ {r['name']}: {r['url']}")
     
-    # In báo cáo tổng kết
-    logger.info("")
-    logger.info("=" * 60)
-    logger.info("📊 BÁO CÁO TỔNG KẾT")
-    logger.info("=" * 60)
+    # Spec Evo
+    se_results = all_results.get("Speculative Evolution", [])
+    working_se = [r for r in se_results if r.get("status") == 200]
+    print(f"\n🔸 Speculative Evolution: {len(working_se)}/{len(se_results)} URL hoạt động")
+    for r in working_se:
+        print(f"    ✅ {r['name']}: {r['url']}")
     
-    total = 0
-    for source, data in summary["sources"].items():
-        count = data["count"]
-        total += count
-        status = "✅" if count > 0 else "❌"
-        logger.info(f"{status} {source}: {count} bài")
-    
-    logger.info(f"\n📈 TỔNG CỘNG: {total} bài từ {len(results)} nguồn")
-    
-    if total == 0:
-        logger.error("⚠️  KHÔNG LẤY ĐƯỢC BÀI NÀO - Kiểm tra lại scraper!")
-        sys.exit(1)
-    else:
-        logger.info("✅ TEST HOÀN TẤT - Có thể lắp vào pipeline")
-        sys.exit(0)
+    # Project Rho
+    pr_results = all_results.get("Project Rho", [])
+    working_pr = [r for r in pr_results if r.get("status") == 200]
+    print(f"\n🔸 Project Rho: {len(working_pr)}/{len(pr_results)} URL hoạt động")
+    for r in working_pr:
+        print(f"    ✅ {r['name']}: {r['url']}")
 
 
 if __name__ == "__main__":
