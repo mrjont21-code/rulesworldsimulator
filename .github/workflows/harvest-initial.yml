@@ -3,6 +3,7 @@ name: Harvest World Lore (Initial Run)
 # Chạy 1 lần thủ công để harvest toàn bộ dữ liệu ban đầu.
 # Luôn scrape đầy đủ (không có tùy chọn skip_scrape) vì đây là lần đầu,
 # DB chưa có gì để so sánh/incremental.
+
 on:
   workflow_dispatch: {}
 
