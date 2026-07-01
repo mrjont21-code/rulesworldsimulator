@@ -1,0 +1,22 @@
+name: Harvest World Lore (Monthly)
+
+# Chạy tự động vào ngày 1 hàng tháng lúc 02:00 UTC.
+# Có thể chạy tay để test/rerun, với tùy chọn dùng lại data raw cũ
+# (skip_scrape) thay vì scrape lại từ đầu.
+on:
+  schedule:
+    - cron: '0 2 1 * *'
+  workflow_dispatch:
+    inputs:
+      skip_scrape:
+        description: 'Bỏ qua bước scrape (dùng data cũ từ artifact)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  harvest:
+    uses: ./.github/workflows/harvest-core.yml
+    with:
+      skip_scrape: ${{ github.event_name == 'workflow_dispatch' && inputs.skip_scrape || false }}
+    secrets: inherit
