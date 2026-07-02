@@ -1,0 +1,92 @@
+name: Kéo Dữ Liệu Từ MongoDB Về GitHub
+
+on:
+  # Chỉ chạy khi bạn bấm nút thủ công trên giao diện GitHub
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch-and-commit:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: 📦 Cài đặt thư viện kết nối
+        run: |
+          python -m pip install --upgrade pip
+          pip install pymongo
+
+      - name: 🧲 Kết nối MongoDB & Xuất JSON
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          MONGODB_DB_NAME: "rulesworld" # Sửa lại tên DB nếu của bạn khác
+        run: |
+          python -c '
+          import os, json
+          from pymongo import MongoClient
+
+          print("Đang kết nối tới MongoDB...")
+          uri = os.environ.get("MONGODB_URI")
+          db_name = os.environ.get("MONGODB_DB_NAME")
+          
+          if not uri:
+              print("❌ LỖI: Không tìm thấy MONGODB_URI trong Secrets.")
+              exit(1)
+              
+          client = MongoClient(uri)
+          db = client[db_name]
+          
+          # Lấy toàn bộ dữ liệu từ bảng biology_rules, bỏ cột _id (vì không tương thích chuẩn JSON)
+          rules = list(db["biology_rules"].find({}, {"_id": 0}))
+          
+          # Đảm bảo thư mục data/ đã tồn tại
+          os.makedirs("data", exist_ok=True)
+          
+          # Lưu thành file json
+          output_path = "data/biology_rules_dump.json"
+          with open(output_path, "w", encoding="utf-8") as f:
+              json.dump(rules, f, ensure_ascii=False, indent=4)
+              
+          print(f"✅ Đã tải thành công {len(rules)} quy luật và lưu vào {output_path}")
+          '
+
+      - name: 💾 Commit & Push Kết Quả Lên GitHub
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # Thêm file json vừa tải về
+          git add data/biology_rules_dump.json 2>/dev/null || true
+          
+          if git status --porcelain | grep -qE '^[MADRC]'; then
+            echo "📝 Có dữ liệu mới từ MongoDB, đang commit..."
+            git commit -m "🤖 [Auto] Cập nhật dữ liệu từ MongoDB - $(date +'%Y-%m-%d %H:%M UTC')"
+            
+            TOKEN="${{ secrets.GHT_PAT_RULES }}"
+            if [ -z "$TOKEN" ]; then
+              TOKEN="${{ secrets.GITHUB_TOKEN }}"
+              echo "⚠️ Không tìm thấy GHT_PAT_RULES, sẽ sử dụng GITHUB_TOKEN mặc định."
+            fi
+            
+            git remote set-url origin "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}"
+            
+            git pull --rebase origin ${{ github.ref_name }}
+            git push origin HEAD:${{ github.ref_name }}
+            
+            echo "✅ Dữ liệu đã được push lên nhánh chính!"
+          else
+            echo "✅ Dữ liệu trên MongoDB không có gì mới so với file hiện tại."
+          fi
+
