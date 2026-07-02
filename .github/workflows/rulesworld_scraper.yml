@@ -53,11 +53,18 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
+          # Lấy giá trị MAX_LOOPS từ input workflow (nếu có), nếu không có thì dùng mặc định 8
+          if [ -z "${{ github.event.inputs.max_loops }}" ]; then
+            export MAX_LOOPS=8
+          else
+            export MAX_LOOPS=${{ github.event.inputs.max_loops }}
+          fi
+
+          echo "⏱️ MAX_LOOPS=$MAX_LOOPS"
+          
           # Chạy pipeline
           python main.py --loop
-        env:
-          MAX_LOOPS: ${{ github.event.inputs.max_loops || '8' }}
-
+          
       - name: 🛟 Phao cứu sinh: Lưu file thành file nén ZIP (Artifact)
         if: always() # Luôn chạy bước này kể cả khi pipeline phía trên có bị crash
         uses: actions/upload-artifact@v4
