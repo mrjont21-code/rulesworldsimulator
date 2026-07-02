@@ -5,7 +5,7 @@
     "skill": "PLAYWRIGHT"
   },
   "www.reddit.com": {
-    "failures": 14,
+    "failures": 18,
     "status": "active",
     "skill": "HTTP"
   },
@@ -275,7 +275,7 @@
     "skill": "HTTP_SOUP"
   },
   "www.science.org": {
-    "failures": 1,
+    "failures": 2,
     "status": "active",
     "skill": "HTTP"
   },
@@ -328,5 +328,45 @@
     "failures": 1,
     "status": "active",
     "skill": "HTTP"
+  },
+  "biology.stackexchange.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "worldbuilding.stackexchange.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "eeyore.astro.illinois.edu": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.livescience.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "lweb.cfa.harvard.edu": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "bigthink.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "hackerone.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "memory-alpha.fandom.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
   }
 }
