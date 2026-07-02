@@ -95,11 +95,11 @@ jobs:
             echo "📝 Phát hiện dữ liệu mới, đang commit..."
             git commit -m "🤖 [Auto] Update scraper data - $(date +'%Y-%m-%d %H:%M UTC')"
             
-            # Ưu tiên dùng GHT_PAT_RULES. Nếu không có, tự lùi về GITHUB_TOKEN.
-            TOKEN="${{ secrets.GHT_PAT_RULES }}"
+            # Ưu tiên dùng GITHUB_PAT. Nếu không có, tự lùi về GITHUB_TOKEN.
+            TOKEN="${{ secrets.GITHUB_PAT }}"
             if [ -z "$TOKEN" ]; then
               TOKEN="${{ secrets.GITHUB_TOKEN }}"
-              echo "⚠️ Không tìm thấy GHT_PAT_RULES, sẽ sử dụng GITHUB_TOKEN mặc định."
+              echo "⚠️ Không tìm thấy GITHUB_PAT, sẽ sử dụng GITHUB_TOKEN mặc định."
             fi
             
             git remote set-url origin "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}"
