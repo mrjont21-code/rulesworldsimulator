@@ -139,8 +139,16 @@ class T2Scrape:
             return None
         page = self._context.new_page()
         try:
-            page.goto(url, wait_until="networkidle", timeout=15000)
-            page.wait_for_timeout(2000)
+            # "networkidle" không bao giờ đạt được trên trang có video/ads/
+            # analytics ping liên tục (ví dụ trang /video/ của Britannica) ->
+            # timeout ở goto() ném exception và mất luôn HTML đã load được.
+            # "domcontentloaded" đủ để DOM sẵn sàng đọc text, không cần chờ
+            # mọi request nền chạy xong.
+            try:
+                page.goto(url, wait_until="domcontentloaded", timeout=15000)
+            except Exception as e:
+                logger.debug(f"Playwright goto timeout/error (thử đọc DOM hiện có): {e}")
+            page.wait_for_timeout(2500)
             text = page.locator("body").inner_text()
             if self.is_valid_content(text):
                 return text[:8000]
@@ -174,12 +182,24 @@ class T2Scrape:
         finally:
             session.close()
 
+    # Đường dẫn thường là trang video/media-only -> ít/không có text để cào,
+    # tốn 8-20s delay + browser launch vô ích. Bỏ qua ngay từ đầu.
+    SKIP_URL_PATTERNS = ("/video/", "/videos/", "/watch", "youtube.com", "vimeo.com")
+
+    def _is_video_only_url(self, url: str) -> bool:
+        u = url.lower()
+        return any(p in u for p in self.SKIP_URL_PATTERNS)
+
     def process_link(self, link: dict) -> dict | None:
         """Xử lý 1 link - CHẬM"""
         url = link["url"]
         domain = link.get("domain", urlparse(url).netloc)
         scraper_type = link.get("scraper_type", "html_simple")
-        
+
+        if self._is_video_only_url(url):
+            logger.info("         ⏭️  Video-only URL, skip")
+            return None
+
         if domain not in self.blackbook:
             self.blackbook[domain] = {"failures": 0, "status": "active", "skill": "HTTP"}
         
