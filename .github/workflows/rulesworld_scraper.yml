@@ -77,12 +77,12 @@ jobs:
             echo "📝 Phát hiện dữ liệu mới, đang commit..."
             git commit -m "🤖 [Auto] Update scraper data - $(date +'%Y-%m-%d %H:%M UTC')"
             
-            # Ưu tiên dùng GITHUB_PAT nếu bạn đã cấu hình trong kho lưu trữ.
+            # Ưu tiên dùng GHT_PAT_RULES nếu bạn đã cấu hình trong kho lưu trữ.
             # Nếu không tìm thấy, hệ thống sẽ tự fallback về GITHUB_TOKEN mặc định.
-            TOKEN="${{ secrets.GITHUB_PAT }}"
+            TOKEN="${{ secrets.GHT_PAT_RULES }}"
             if [ -z "$TOKEN" ]; then
               TOKEN="${{ secrets.GITHUB_TOKEN }}"
-              echo "⚠️ Không tìm thấy GITHUB_PAT, sẽ sử dụng GITHUB_TOKEN mặc định."
+              echo "⚠️ Không tìm thấy GHT_PAT_RULES, sẽ sử dụng GITHUB_TOKEN mặc định."
             fi
             
             # Thiết lập lại URL của remote origin để có quyền truy cập qua Token
