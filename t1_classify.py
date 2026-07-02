@@ -28,15 +28,28 @@ class T1Classify:
             "wiley.com": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 1},
             "elsevier.com": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 1},
             "plos.org": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 1},
-            
+
             # Government/Space Agencies - High priority
             "nasa.gov": {"label": "government_research", "scraper_type": "html_simple", "priority": 1},
             "esa.int": {"label": "government_research", "scraper_type": "html_simple", "priority": 1},
             "jaxa.jp": {"label": "government_research", "scraper_type": "html_simple", "priority": 1},
-            
+
             # Wikipedia - High priority (Nguồn cung cấp luật thế giới/hóa sinh cực mạnh)
             "wikipedia.org": {"label": "wiki_article", "scraper_type": "html_simple", "priority": 1},
-            
+
+            # Worldbuilding / Speculative fiction - High priority (Nguồn chất liệu
+            # giả tưởng chính cho kịch bản: sinh vật, hệ sinh thái, xã hội hư cấu
+            # ngoài carbon. Trước đây bị hạ xuống priority 5 chung với fandom.com
+            # generic nên gần như không bao giờ được cào trong ngân sách 20
+            # link/session -> tách riêng và nâng lên ngang academic.
+            "orionsarm.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
+            "worldanvil.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
+            "projectperditus.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
+            "spec-evo.fandom.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
+            "speculativeevolution.fandom.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
+            "amphiterra.weebly.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
+            "tvtropes.org": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 2},
+
             # Science News/Magazines - Medium priority
             "scientificamerican.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 2},
             "space.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 2},
@@ -48,18 +61,22 @@ class T1Classify:
             "quantamagazine.org": {"label": "science_news", "scraper_type": "html_simple", "priority": 2},
             "wired.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 2},
             "theverge.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 2},
-            
-            # Community/Discussion - Medium-low priority
-            "reddit.com": {"label": "community_discussion", "scraper_type": "reddit", "priority": 3},
+
+            # Community/Discussion - Medium priority (nguồn ý tưởng sáng tạo tốt
+            # cho worldbuilding, nâng từ 3 lên 2 ngang science_news)
+            "reddit.com": {"label": "community_discussion", "scraper_type": "reddit", "priority": 2},
             "stackexchange.com": {"label": "community_discussion", "scraper_type": "html_simple", "priority": 3},
             "quora.com": {"label": "community_discussion", "scraper_type": "html_simple", "priority": 3},
 
-            # Wiki/Fandom - Lowest priority (Cố tình hạ cấp để tránh cào nhầm quái vật cụ thể)
+            # Wiki/Fandom generic - Lowest priority (Cố tình hạ cấp để tránh cào
+            # nhầm quái vật cụ thể của các fandom KHÔNG liên quan worldbuilding
+            # khoa học viễn tưởng, vd. game/anime fandom. Các domain worldbuilding
+            # liên quan trực tiếp đã được whitelist riêng ở priority 1 phía trên).
             "fandom.com": {"label": "wiki_fandom", "scraper_type": "html_simple", "priority": 5},
             "wikia.com": {"label": "wiki_fandom", "scraper_type": "html_simple", "priority": 5},
             "wikidot.com": {"label": "wiki_fandom", "scraper_type": "html_simple", "priority": 5},
         }
-        
+
         # Path-based rules
         self.path_rules = [
             (r"\.pdf$", "pdf_document", "pdf", 2),
@@ -76,7 +93,7 @@ class T1Classify:
         parsed = urlparse(url)
         domain = parsed.netloc.lower()
         path = parsed.path.lower()
-        
+
         # Check domain rules first
         for domain_pattern, rule in self.domain_rules.items():
             if domain_pattern in domain:
@@ -86,7 +103,7 @@ class T1Classify:
                     "priority": rule["priority"],
                     "domain": domain
                 }
-        
+
         # Check path rules
         for pattern, label, scraper_type, priority in self.path_rules:
             if re.search(pattern, path):
@@ -96,7 +113,7 @@ class T1Classify:
                     "priority": priority,
                     "domain": domain
                 }
-        
+
         # Default
         return {
             "label": "general_article",
@@ -110,30 +127,30 @@ class T1Classify:
         logger.info("=" * 80)
         logger.info("🏷️  T1: CLASSIFY LINKS")
         logger.info("=" * 80)
-        
+
         classified = []
         for link in links:
             classification = self.classify_link(link["url"])
             link.update(classification)
             classified.append(link)
-            
+
             # Log ngắn gọn
             priority_icon = {1: "🔴", 2: "🟡", 3: "🟢", 4: "⚪", 5: "⚫"}.get(classification["priority"], "⚪")
             logger.info(f"   {priority_icon} {link['domain'][:30]:<30} → {classification['label']}")
-        
+
         # Sắp xếp theo priority (1 = cao nhất)
         classified.sort(key=lambda x: x["priority"])
-        
+
         # Thống kê
         labels = {}
         for link in classified:
             label = link["label"]
             labels[label] = labels.get(label, 0) + 1
-        
+
         logger.info(f"\n📊 Thống kê:")
         for label, count in sorted(labels.items(), key=lambda x: -x[1]):
             logger.info(f"   {label}: {count}")
-        
+
         return classified
 
 
@@ -149,7 +166,7 @@ if __name__ == "__main__":
         format='%(asctime)s - [T1] %(message)s',
         datefmt='%H:%M:%S'
     )
-    
+
     # Test
     test_links = [
         {"url": "https://arxiv.org/abs/2301.12345"},
@@ -158,6 +175,6 @@ if __name__ == "__main__":
         {"url": "https://www.nasa.gov/mission/"},
         {"url": "https://example.com/random-page"},
     ]
-    
+
     classified = run_t1(test_links)
     print(f"\n✅ Classified {len(classified)} links")
