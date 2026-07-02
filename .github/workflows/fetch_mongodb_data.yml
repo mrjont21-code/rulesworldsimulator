@@ -48,12 +48,11 @@ jobs:
           inventory = {}
           db_names = []
           
-          # 1. Thử lấy danh sách toàn bộ Database
           try:
               db_names = client.list_database_names()
               db_names = [db for db in db_names if db not in ["admin", "config", "local"]]
           except OperationFailure:
-              print("⚠️ Không có quyền quét toàn bộ Cluster (do giới hạn phân quyền). Chỉ quét Database mặc định từ URI...")
+              print("⚠️ Không có quyền quét toàn bộ Cluster. Chỉ quét Database mặc định từ URI...")
               try:
                   default_db = client.get_default_database().name
                   db_names = [default_db]
@@ -64,7 +63,6 @@ jobs:
           target_data = []
           target_db_name = ""
 
-          # 2. Quét từng Database và Collection
           for db_name in db_names:
               inventory[db_name] = {}
               db = client[db_name]
@@ -72,7 +70,6 @@ jobs:
                   colls = db.list_collection_names()
                   for coll_name in colls:
                       count = db[coll_name].count_documents({})
-                      # Lấy 1 document làm mẫu để xem cấu trúc
                       sample = list(db[coll_name].find({}, {"_id": 0}).limit(1))
                       
                       inventory[db_name][coll_name] = {
@@ -80,9 +77,7 @@ jobs:
                           "sample_document": sample[0] if sample else None
                       }
                       
-                      # Tự động bắt mạch tìm dữ liệu cào
                       if coll_name in ["biology_rules", "content", "links", "keywords"] and count > 0:
-                          # Ưu tiên gom bảng biology_rules
                           if coll_name == "biology_rules" or not target_data:
                               target_data = list(db[coll_name].find({}, {"_id": 0}))
                               target_db_name = f"{db_name}.{coll_name}"
@@ -91,15 +86,52 @@ jobs:
 
           os.makedirs("data", exist_ok=True)
           
-          # 3. Xuất file Checklist (Inventory) - ĐÃ FIX LỖI DATETIME (Thêm default=str)
           with open("data/mongodb_inventory.json", "w", encoding="utf-8") as f:
               json.dump(inventory, f, ensure_ascii=False, indent=4, default=str)
           print("\n✅ Đã xuất Checklist các kho chứa: data/mongodb_inventory.json")
 
-          # 4. Xuất file Dữ liệu cào - ĐÃ FIX LỖI DATETIME (Thêm default=str)
           if target_data:
               with open("data/scraped_data_dump.json", "w", encoding="utf-8") as f:
                   json.dump(target_data, f, ensure_ascii=False, indent=4, default=str)
+              print(f"✅ Đã lôi thành công {len(target_data)} bản ghi từ [{target_db_name}] về: data/scraped_data_dump.json")
+          else:
+              print("⚠️ Không tìm thấy bảng biology_rules, content hoặc links nào có dữ liệu!")
+          '
+
+      - name: 🛟 Phao cứu sinh (Lưu file thành ZIP ngay trên giao diện)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mongodb-scan-results
+          path: data/
+          retention-days: 7
+
+      - name: 💾 Commit & Push Kết Quả Lên GitHub
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          # ĐÃ SỬA: Gom toàn bộ thư mục data thay vì chỉ định đích danh tên file
+          git add -f data/ 2>/dev/null || true
+          
+          if git status --porcelain | grep -qE '^[MADRC]'; then
+            echo "📝 Có dữ liệu mới từ MongoDB, đang commit..."
+            git commit -m "🤖 [Auto] Cập nhật Checklist từ MongoDB - $(date +'%Y-%m-%d %H:%M UTC')"
+            
+            TOKEN="${{ secrets.GHT_PAT_RULES }}"
+            if [ -z "$TOKEN" ]; then
+              TOKEN="${{ secrets.GITHUB_TOKEN }}"
+            fi
+            
+            git remote set-url origin "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}"
+            
+            git pull --rebase origin ${{ github.ref_name }}
+            git push origin HEAD:${{ github.ref_name }}
+            
+            echo "✅ Dữ liệu đã được push lên nhánh chính!"
+          else
+            echo "✅ Dữ liệu trên MongoDB không có gì mới so với file hiện tại."
+          fi
               print(f"✅ Đã lôi thành công {len(target_data)} bản ghi từ [{target_db_name}] về: data/scraped_data_dump.json")
           else:
               print("⚠️ Không tìm thấy bảng biology_rules, content hoặc links nào có dữ liệu!")
