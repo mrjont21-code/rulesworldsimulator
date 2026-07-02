@@ -1,1 +1,52 @@
-{}
+{
+  "en.wikipedia.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.reddit.com": {
+    "failures": 3,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "astronomy.stackexchange.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.quora.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.sciencedirect.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.khanacademy.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.futurelearn.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "biologyinsights.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.scienceabc.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.daviddarling.info": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  }
+}
