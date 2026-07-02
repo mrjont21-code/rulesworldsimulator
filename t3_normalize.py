@@ -6,6 +6,9 @@ import hashlib
 import logging
 from datetime import datetime, timezone
 
+from config import settings
+from summarizer import extractive_summary
+
 logger = logging.getLogger(__name__)
 
 
@@ -24,17 +27,26 @@ class T3Normalize:
     def normalize_content(self, content_data: dict) -> dict:
         """Chuẩn hóa nội dung"""
         content = self.clean_text(content_data.get("content", ""))
-        
+
         # Generate content hash (để deduplicate)
         content_hash = hashlib.md5(content.encode()).hexdigest()
-        
+
         # Extract metadata
         url = content_data.get("url", "")
         title = content_data.get("title", "")
-        
+
         # Generate rule_id
         rule_id = hashlib.md5(f"{url}_{title}".encode()).hexdigest()[:12]
-        
+
+        # Tóm tắt bằng extractive summarizer (thuần Python, không LLM) - dùng
+        # làm tư liệu tham khảo cho LLM viết kịch bản ở bước sau, không cần
+        # tốn API call ở giai đoạn thu thập dữ liệu này.
+        summary_data = extractive_summary(
+            content,
+            domain_keywords=settings.BIOLOGY_KEYWORDS,
+            max_sentences=6,
+        )
+
         return {
             "rule_id": rule_id,
             "url": url,
@@ -42,6 +54,9 @@ class T3Normalize:
             "content": content,
             "content_length": len(content),
             "content_hash": content_hash,
+            "summary": summary_data["summary"],
+            "key_facts": summary_data["key_facts"],
+            "matched_keywords": summary_data["matched_keywords"],
             "source_label": content_data.get("label", "unknown"),
             "keyword": content_data.get("keyword", ""),
             "domain": content_data.get("domain", ""),
