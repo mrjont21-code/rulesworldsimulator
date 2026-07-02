@@ -1,4 +1,4 @@
-name: Lấy 11 Luật Hóa Sinh
+name: Hút Trọn Ổ Dữ Liệu Cào
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ permissions:
   contents: write
 
 jobs:
-  fetch-direct:
+  vacuum-data:
     runs-on: ubuntu-latest
     
     steps:
@@ -24,36 +24,65 @@ jobs:
       - name: 📦 Cài đặt thư viện
         run: pip install pymongo
 
-      - name: 📝 Tạo Script Python Độc Lập
+      - name: 📝 Tạo Máy Hút Dữ Liệu Thông Minh
         run: |
-          cat << 'EOF' > fetch_rules.py
+          cat << 'EOF' > smart_vacuum.py
           import os, json
           from pymongo import MongoClient
 
           uri = os.environ.get("MONGODB_URI")
           client = MongoClient(uri)
 
-          # Đích danh chui thẳng vào nhà rulesworld, không cần quét
-          db = client["rulesworld"]
-          rules = list(db["biology_rules"].find({}, {"_id": 0}))
+          all_scraped_data = []
+
+          # Thử lấy danh sách DB, nếu bị chặn quyền thì dùng fallback
+          try:
+              db_names = client.list_database_names()
+          except:
+              try:
+                  db_names = [client.get_default_database().name]
+              except:
+                  db_names = ["world_lore_db", "chimera_permanent", "chimera_canon"]
+
+          # Quét qua toàn bộ các Database
+          for db_name in db_names:
+              if db_name in ["admin", "config", "local", "sample_mflix"]: continue
+              
+              db = client[db_name]
+              try:
+                  for coll_name in db.list_collection_names():
+                      # Bỏ qua các bảng cấu hình game đã biết
+                      if coll_name in ["used_keywords", "world_snapshots", "world_map", "voice_mapping", "archetypes", "world_history_founding", "character_states"]:
+                          continue
+                      
+                      docs = list(db[coll_name].find({}, {"_id": 0}))
+                      if not docs: continue
+                      
+                      # Bắt mạch: Nếu data có chứa các trường đặc trưng của cỗ máy cào
+                      sample = docs[0]
+                      if any(k in sample for k in ["url", "content", "content_hash", "keyword"]):
+                          print(f"🎯 TÌM THẤY MỎ VÀNG: Database [{db_name}] -> Bảng [{coll_name}] chứa {len(docs)} bản ghi!")
+                          all_scraped_data.extend(docs)
+              except Exception as e:
+                  print(f"Bỏ qua DB {db_name} do lỗi: {e}")
 
           os.makedirs("data", exist_ok=True)
-          with open("data/11_biology_rules.json", "w", encoding="utf-8") as f:
-              json.dump(rules, f, ensure_ascii=False, indent=4, default=str)
+          with open("data/scraped_golden_data.json", "w", encoding="utf-8") as f:
+              json.dump(all_scraped_data, f, ensure_ascii=False, indent=4, default=str)
 
-          print(f"✅ BẮT ĐƯỢC {len(rules)} QUY LUẬT TỪ DATABASE RULESWORLD!")
+          print(f"✅ ĐÃ HÚT THÀNH CÔNG TỔNG CỘNG {len(all_scraped_data)} BẢN GHI!")
           EOF
 
-      - name: 🧲 Chạy Script Lấy Dữ Liệu
+      - name: 🧲 Chạy Máy Hút
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
-        run: python fetch_rules.py
+        run: python smart_vacuum.py
 
       - name: 🛟 Phao cứu sinh (Lưu file ZIP)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: 11-biology-rules
+          name: golden-scraped-data
           path: data/
           retention-days: 7
 
@@ -62,10 +91,10 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          git add -f data/11_biology_rules.json
+          git add -f data/scraped_golden_data.json 2>/dev/null || true
           
           if git status --porcelain | grep -qE '^[MADRC]'; then
-            git commit -m "🤖 [Auto] Bắt thành công 11 luật hóa sinh"
+            git commit -m "🤖 [Auto] Hút thành công dữ liệu cào"
             
             TOKEN="${{ secrets.GHT_PAT_RULES }}"
             if [ -z "$TOKEN" ]; then
