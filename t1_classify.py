@@ -1,5 +1,5 @@
 """
-T1: CLASSIFY LINKS - Phân loại links với扩展 sources
+T1: CLASSIFY LINKS - Phân loại links với extended sources
 Pattern Tinnhanh + Rulesworld sources
 """
 import re
@@ -33,7 +33,7 @@ class T1Classify:
             "esa.int": {"label": "government_research", "scraper_type": "html_simple", "priority": 1},
             "jaxa.jp": {"label": "government_research", "scraper_type": "html_simple", "priority": 1},
             
-            # Wikipedia - High priority
+            # Wikipedia - High priority (Nguồn cung cấp luật thế giới/hóa sinh cực mạnh)
             "wikipedia.org": {"label": "wiki_article", "scraper_type": "html_simple", "priority": 1},
             
             # Science News/Magazines - Medium priority
@@ -48,15 +48,15 @@ class T1Classify:
             "wired.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 2},
             "theverge.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 2},
             
-            # Wiki/Fandom - Medium priority
-            "fandom.com": {"label": "wiki_fandom", "scraper_type": "html_simple", "priority": 2},
-            "wikia.com": {"label": "wiki_fandom", "scraper_type": "html_simple", "priority": 2},
-            "wikidot.com": {"label": "wiki_fandom", "scraper_type": "html_simple", "priority": 2},
-            
             # Community/Discussion - Medium-low priority
             "reddit.com": {"label": "community_discussion", "scraper_type": "reddit", "priority": 3},
             "stackexchange.com": {"label": "community_discussion", "scraper_type": "html_simple", "priority": 3},
             "quora.com": {"label": "community_discussion", "scraper_type": "html_simple", "priority": 3},
+
+            # Wiki/Fandom - Lowest priority (Cố tình hạ cấp để tránh cào nhầm quái vật cụ thể)
+            "fandom.com": {"label": "wiki_fandom", "scraper_type": "html_simple", "priority": 5},
+            "wikia.com": {"label": "wiki_fandom", "scraper_type": "html_simple", "priority": 5},
+            "wikidot.com": {"label": "wiki_fandom", "scraper_type": "html_simple", "priority": 5},
         }
         
         # Path-based rules
@@ -102,6 +102,64 @@ class T1Classify:
             "scraper_type": "html_simple",
             "priority": 4,
             "domain": domain
+        }
+
+    def classify_links(self, links: list[dict]) -> list[dict]:
+        """Phân loại tất cả links"""
+        logger.info("=" * 80)
+        logger.info("🏷️  T1: CLASSIFY LINKS")
+        logger.info("=" * 80)
+        
+        classified = []
+        for link in links:
+            classification = self.classify_link(link["url"])
+            link.update(classification)
+            classified.append(link)
+            
+            # Log ngắn gọn
+            priority_icon = {1: "🔴", 2: "🟡", 3: "🟢", 4: "⚪", 5: "⚫"}.get(classification["priority"], "⚪")
+            logger.info(f"   {priority_icon} {link['domain'][:30]:<30} → {classification['label']}")
+        
+        # Sắp xếp theo priority (1 = cao nhất)
+        classified.sort(key=lambda x: x["priority"])
+        
+        # Thống kê
+        labels = {}
+        for link in classified:
+            label = link["label"]
+            labels[label] = labels.get(label, 0) + 1
+        
+        logger.info(f"\n📊 Thống kê:")
+        for label, count in sorted(labels.items(), key=lambda x: -x[1]):
+            logger.info(f"   {label}: {count}")
+        
+        return classified
+
+
+def run_t1(links: list[dict]) -> list[dict]:
+    """Entry point cho T1"""
+    classifier = T1Classify()
+    return classifier.classify_links(links)
+
+
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - [T1] %(message)s',
+        datefmt='%H:%M:%S'
+    )
+    
+    # Test
+    test_links = [
+        {"url": "https://arxiv.org/abs/2301.12345"},
+        {"url": "https://en.wikipedia.org/wiki/Astrobiology"},
+        {"url": "https://speculativeevolution.fandom.com/wiki/Aerosaur"},
+        {"url": "https://www.nasa.gov/mission/"},
+        {"url": "https://example.com/random-page"},
+    ]
+    
+    classified = run_t1(test_links)
+    print(f"\n✅ Classified {len(classified)} links")
         }
 
     def classify_links(self, links: list[dict]) -> list[dict]:
