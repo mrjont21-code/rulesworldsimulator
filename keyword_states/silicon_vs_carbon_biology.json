@@ -1,0 +1,40 @@
+{
+  "keyword": "silicon vs carbon biology",
+  "normalized": "silicon_vs_carbon_biology",
+  "total_links_found": 20,
+  "links_scraped": 7,
+  "scraped_urls": [
+    "https://en.wikipedia.org/wiki/Hypothetical_types_of_biochemistry",
+    "https://www.scientificamerican.com/article/could-silicon-be-the-basi/",
+    "https://www.notredamecoll.ac.uk/news/silicon-valley-argument-silicon-based-life",
+    "https://www.khanacademy.org/science/biology/properties-of-carbon/carbon/v/silicon-based-life",
+    "https://shop.machinemfg.com/silicon-vs-carbon-whats-the-difference/",
+    "https://www.nbcnews.com/mach/science/silicon-based-life-may-be-more-just-science-fiction-n748266",
+    "https://www.scienceabc.com/pure-sciences/why-is-life-carbon-based-and-not-say-silicon-based"
+  ],
+  "found_urls": [
+    "https://www.reddit.com/r/sciencefiction/comments/1ah68ex/silicon_vs_carbonbased_life_forms/",
+    "https://www.researchgate.net/post/Could_life_develop_around_Silicon_instead_of_Carbon",
+    "https://www.reddit.com/r/explainlikeimfive/comments/124bulj/eli5_why_is_it_assumed_that_life_must_be_carbon/",
+    "https://www.reddit.com/r/chemistry/comments/12ee4mx/what_is_the_main_differences_between_carbon_and/",
+    "https://www.khanacademy.org/science/biology/properties-of-carbon/carbon/v/silicon-based-life",
+    "https://www.youtube.com/watch?v=Qj68A041P5I",
+    "https://www.youtube.com/watch?v=kAFC4RY1cKQ",
+    "https://www.youtube.com/watch?v=gEARGxOqx30",
+    "https://www.youtube.com/shorts/opXYa8PoN6M",
+    "https://www.youtube.com/watch?v=0RboWcgNEa8",
+    "https://shop.machinemfg.com/silicon-vs-carbon-whats-the-difference/",
+    "https://www.nbcnews.com/mach/science/silicon-based-life-may-be-more-just-science-fiction-n748266",
+    "https://www.science.org/content/article/researchers-take-small-step-toward-silicon-based-life",
+    "https://www.scienceabc.com/pure-sciences/why-is-life-carbon-based-and-not-say-silicon-based",
+    "https://en.wikipedia.org/wiki/Hypothetical_types_of_biochemistry",
+    "https://en.wikipedia.org/wiki/Hypothetical_types_of_biochemistry#Overview_of_hypothetical_types_of_biochemistry",
+    "https://en.wikipedia.org/wiki/Hypothetical_types_of_biochemistry#Shadow_biosphere",
+    "https://www.scienceabc.com/pure-sciences/why-is-life-carbon-based-and-not-say-silicon-based.html",
+    "https://www.scientificamerican.com/article/could-silicon-be-the-basi/",
+    "https://www.notredamecoll.ac.uk/news/silicon-valley-argument-silicon-based-life"
+  ],
+  "last_run": "2026-07-02T07:15:53.753787+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}

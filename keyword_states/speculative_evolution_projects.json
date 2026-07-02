@@ -1,0 +1,40 @@
+{
+  "keyword": "speculative evolution projects",
+  "normalized": "speculative_evolution_projects",
+  "total_links_found": 20,
+  "links_scraped": 7,
+  "scraped_urls": [
+    "https://en.wikipedia.org/wiki/Speculative_evolution",
+    "https://www.orionsarm.com/forum/showthread.php?tid=5496",
+    "https://www.projectperditus.com/",
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/SpeculativeBiology",
+    "https://amphiterra.weebly.com/inception.html",
+    "https://www.worldanvil.com/w/to-be-named-speculative-evolution-project-dedicatedfollower467/meta",
+    "https://spec-evo.fandom.com/wiki/Speculative_Evolution_Wiki:List_of_Projects/Project_Overviews"
+  ],
+  "found_urls": [
+    "https://en.wikipedia.org/wiki/Speculative_evolution",
+    "https://en.wikipedia.org/wiki/Speculative_evolution#History",
+    "https://en.wikipedia.org/wiki/Speculative_evolution#As_an_educational_and_scientific_tool",
+    "https://en.wikipedia.org/wiki/Speculative_evolution#Subsets",
+    "https://spec-evo.fandom.com/wiki/Speculative_Evolution_Wiki:List_of_Projects/Project_Overviews",
+    "https://www.reddit.com/r/SpeculativeEvolution/comments/yargmb/what_are_some_good_organized_speculative_biology/",
+    "https://www.reddit.com/r/SpeculativeEvolution/comments/lta1ox/list_of_spec_evo_resources/",
+    "https://www.orionsarm.com/forum/showthread.php?tid=5496",
+    "https://www.reddit.com/r/SpeculativeEvolution/comments/172o3lz/what_are_some_underrated_speculative_evolution/",
+    "https://www.youtube.com/watch?v=-aKQnFtom0s",
+    "https://www.youtube.com/watch?v=yMKV9xsa_is",
+    "https://www.youtube.com/watch?v=J1Kfcln7TV0",
+    "https://www.youtube.com/watch?v=-EPuxMhiBj0",
+    "https://www.youtube.com/watch?v=NifBVOeVdO0",
+    "https://www.youtube.com/watch?v=3uhipzNkkNg",
+    "https://spec-evo.fandom.com/wiki/Speculative_Evolution_Wiki:List_of_Projects",
+    "https://www.projectperditus.com/",
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/SpeculativeBiology",
+    "https://amphiterra.weebly.com/inception.html",
+    "https://www.worldanvil.com/w/to-be-named-speculative-evolution-project-dedicatedfollower467/meta"
+  ],
+  "last_run": "2026-07-02T06:42:06.744181+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}

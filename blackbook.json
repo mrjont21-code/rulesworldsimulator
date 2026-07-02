@@ -5,7 +5,7 @@
     "skill": "PLAYWRIGHT"
   },
   "www.reddit.com": {
-    "failures": 3,
+    "failures": 14,
     "status": "active",
     "skill": "HTTP"
   },
@@ -48,5 +48,285 @@
     "failures": 0,
     "status": "active",
     "skill": "PLAYWRIGHT"
+  },
+  "science.nasa.gov": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "astrobiology.nasa.gov": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "pmc.ncbi.nlm.nih.gov": {
+    "failures": 4,
+    "status": "banned",
+    "skill": "HTTP_SOUP"
+  },
+  "link.springer.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.hou.usra.edu": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "news.agu.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "astrobiology.com": {
+    "failures": 3,
+    "status": "banned",
+    "skill": "HTTP"
+  },
+  "astrobiology.arizona.edu": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.liebertpub.com": {
+    "failures": 2,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.agu.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.frontiersin.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "chemistry-europe.onlinelibrary.wiley.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.researchgate.net": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.notulaebiologicae.ro": {
+    "failures": 2,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "xenobiologymuseum.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.analchemsci.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "genomicsdb.net": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "pubmed.ncbi.nlm.nih.gov": {
+    "failures": 2,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "ocean.si.edu": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.pbslearningmedia.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "medium.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "oceanservice.noaa.gov": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.the-microbiologist.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.scientificamerican.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "newspaceeconomy.ca": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.sciencetimes.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.space.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "chemistry.stackexchange.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "guide-scientific.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "reasons.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.orionsarm.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.projectperditus.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "tvtropes.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "amphiterra.weebly.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.worldanvil.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "spec-evo.fandom.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.nasa.gov": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "ntrs.nasa.gov": {
+    "failures": 1,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.science.gov": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.santafe.edu": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "academic.oup.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.aimspress.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.lifescied.org": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.journals.uchicago.edu": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "elifesciences.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.science.org": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.notredamecoll.ac.uk": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "shop.machinemfg.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.nbcnews.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "arxiv.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "phys.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.universetoday.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "journals.sagepub.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.wikidoc.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "pubs.acs.org": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.ioc.kit.edu": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
   }
 }

@@ -1,0 +1,37 @@
+{
+  "keyword": "xenobiology synthetic life",
+  "normalized": "xenobiology_synthetic_life",
+  "total_links_found": 20,
+  "links_scraped": 4,
+  "scraped_urls": [
+    "https://en.wikipedia.org/wiki/Xenobiology",
+    "https://www.researchgate.net/publication/343272929_Xenobiology_A_Journey_towards_Parallel_Life_Forms",
+    "https://www.analchemsci.com/posts/the-alien-within-how-xenobiology-is-redefining-life-and-creating-newtonature-organisms",
+    "https://genomicsdb.net/xenobiology.html"
+  ],
+  "found_urls": [
+    "https://en.wikipedia.org/wiki/Xenobiology",
+    "https://en.wikipedia.org/wiki/Xenobiology#Difference_between_xeno-,_exo-,_and_astro-biology",
+    "https://en.wikipedia.org/wiki/Xenobiology#Aims",
+    "https://en.wikipedia.org/wiki/Xenobiology#Scientific_approach",
+    "https://chemistry-europe.onlinelibrary.wiley.com/doi/10.1002/cbic.202000141",
+    "https://www.youtube.com/watch?v=M4wXj8kEyNY",
+    "https://www.youtube.com/watch?v=VEyQIuV_D30",
+    "https://www.youtube.com/watch?v=nmZuGBUB8v8",
+    "https://www.youtube.com/watch?v=_GNC1g3BHSI",
+    "https://www.youtube.com/watch?v=tghglnbW_uM",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC2909387/",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC11355180/",
+    "https://www.sciencedirect.com/science/article/pii/S0167779925002094",
+    "https://www.researchgate.net/publication/352712062_Xenobiology_An_expanded_semantical_review",
+    "https://xenobiologymuseum.com/what-is-xenobiology/",
+    "https://www.researchgate.net/publication/343272929_Xenobiology_A_Journey_towards_Parallel_Life_Forms",
+    "https://www.notulaebiologicae.ro/index.php/nsb/article/view/10929",
+    "https://www.notulaebiologicae.ro/index.php/nsb/article/download/10929/9399/43370",
+    "https://www.analchemsci.com/posts/the-alien-within-how-xenobiology-is-redefining-life-and-creating-newtonature-organisms",
+    "https://genomicsdb.net/xenobiology.html"
+  ],
+  "last_run": "2026-07-02T06:02:16.510773+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}

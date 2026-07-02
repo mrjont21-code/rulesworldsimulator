@@ -1,0 +1,36 @@
+{
+  "keyword": "theoretical biology frameworks",
+  "normalized": "theoretical_biology_frameworks",
+  "total_links_found": 20,
+  "links_scraped": 3,
+  "scraped_urls": [
+    "https://en.wikipedia.org/wiki/Mathematical_and_theoretical_biology",
+    "https://www.santafe.edu/research/results/papers/2124-the-challenges-and-scope-of-theoretical-biolo",
+    "https://elifesciences.org/articles/07158"
+  ],
+  "found_urls": [
+    "https://en.wikipedia.org/wiki/Mathematical_and_theoretical_biology",
+    "https://en.wikipedia.org/wiki/Mathematical_and_theoretical_biology#History",
+    "https://en.wikipedia.org/wiki/Mathematical_and_theoretical_biology#Areas_of_research",
+    "https://en.wikipedia.org/wiki/Mathematical_and_theoretical_biology#Model_example:_the_cell_cycle",
+    "https://en.wikipedia.org/wiki/Mathematical_and_theoretical_biology#Software",
+    "https://en.wikipedia.org/wiki/Mathematical_and_theoretical_biology#Further_reading",
+    "https://www.lifescied.org/doi/10.1187/cbe.21-05-0134",
+    "https://www.youtube.com/watch?v=ta3pGHqPKkg&pp=0gcJCfwAo7VqN5tD",
+    "https://www.youtube.com/watch?v=Zh6PFxUFepg",
+    "https://www.youtube.com/watch?v=q-d1hS6hzLg",
+    "https://www.youtube.com/watch?v=5fNXQu_Qg6Y",
+    "https://www.youtube.com/watch?v=VQBcKPBrqeo",
+    "https://www.researchgate.net/publication/230844762_Toward_a_Conceptual_Framework_for_Biology",
+    "https://www.journals.uchicago.edu/doi/10.1086/655117",
+    "https://academic.oup.com/icb/article/54/5/736/2797828",
+    "https://www.sciencedirect.com/science/article/abs/pii/S002228362030156X",
+    "https://elifesciences.org/articles/07158",
+    "https://www.aimspress.com/article/doi/10.3934/biophy.2020013",
+    "https://pubmed.ncbi.nlm.nih.gov/20919632/",
+    "https://www.santafe.edu/research/results/papers/2124-the-challenges-and-scope-of-theoretical-biolo"
+  ],
+  "last_run": "2026-07-02T06:54:58.464061+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}
