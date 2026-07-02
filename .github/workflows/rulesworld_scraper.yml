@@ -13,7 +13,7 @@ on:
   schedule:
     - cron: '0 2 * * *' # Chạy lúc 2h sáng UTC mỗi ngày
 
-# Cấp quyền ghi để push JSON lên repo (Dành cho GITHUB_TOKEN fallback)
+# Cấp quyền ghi để push JSON lên repo
 permissions:
   contents: write
 
@@ -58,6 +58,17 @@ jobs:
         env:
           MAX_LOOPS: ${{ github.event.inputs.max_loops || '8' }}
 
+      - name: 🛟 Phao cứu sinh: Lưu file thành file nén ZIP (Artifact)
+        if: always() # Luôn chạy bước này kể cả khi pipeline phía trên có bị crash
+        uses: actions/upload-artifact@v4
+        with:
+          name: rulesworld-scraped-data-backup
+          path: |
+            keyword_states/
+            data/
+            blackbook.json
+          retention-days: 7 # Giữ file zip trên server GitHub trong 7 ngày
+
       - name: 💾 Commit & Push Generated JSON Data
         if: always() # Luôn chạy bước này kể cả khi scrape bị lỗi
         run: |
@@ -77,22 +88,19 @@ jobs:
             echo "📝 Phát hiện dữ liệu mới, đang commit..."
             git commit -m "🤖 [Auto] Update scraper data - $(date +'%Y-%m-%d %H:%M UTC')"
             
-            # Ưu tiên dùng GITHUB_PAT nếu bạn đã cấu hình trong kho lưu trữ.
-            # Nếu không tìm thấy, hệ thống sẽ tự fallback về GITHUB_TOKEN mặc định.
+            # Ưu tiên dùng GITHUB_PAT. Nếu không có, tự lùi về GITHUB_TOKEN
             TOKEN="${{ secrets.GITHUB_PAT }}"
             if [ -z "$TOKEN" ]; then
               TOKEN="${{ secrets.GITHUB_TOKEN }}"
               echo "⚠️ Không tìm thấy GITHUB_PAT, sẽ sử dụng GITHUB_TOKEN mặc định."
             fi
             
-            # Thiết lập lại URL của remote origin để có quyền truy cập qua Token
             git remote set-url origin "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}"
             
             echo "🔄 Đang đồng bộ với remote để tránh lỗi xung đột (fetch first)..."
-            # Tải các thay đổi mới trên remote về và đặt commit cục bộ (local) của bạn lên trên cùng
+            # Kéo code trên remote về và đặt commit local lên trên
             git pull --rebase origin ${{ github.ref_name }}
             
-            # Đẩy mã lên remote
             git push origin HEAD:${{ github.ref_name }}
             echo "✅ Push thành công!"
           else
