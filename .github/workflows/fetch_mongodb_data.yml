@@ -1,4 +1,4 @@
-name: Kéo Dữ Liệu & Quét Kho MongoDB
+name: Lấy 11 Luật Hóa Sinh
 
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ permissions:
   contents: write
 
 jobs:
-  fetch-and-scan:
+  fetch-direct:
     runs-on: ubuntu-latest
     
     steps:
@@ -20,86 +20,64 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'
 
-      - name: 📦 Cài đặt thư viện kết nối
-        run: |
-          python -m pip install --upgrade pip
-          pip install pymongo
+      - name: 📦 Cài đặt thư viện
+        run: pip install pymongo
 
-      - name: 📡 Quét Checklist và Lấy Dữ liệu
-        env:
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+      - name: 📝 Tạo Script Python Độc Lập
         run: |
-          python -c '
+          cat << 'EOF' > fetch_rules.py
           import os, json
           from pymongo import MongoClient
-          from pymongo.errors import OperationFailure
 
-          print("Đang kết nối tới MongoDB...")
           uri = os.environ.get("MONGODB_URI")
-          
-          if not uri:
-              print("❌ LỖI: Không tìm thấy MONGODB_URI trong Secrets.")
-              exit(1)
-              
           client = MongoClient(uri)
-          
-          inventory = {}
-          db_names = []
-          
-          try:
-              db_names = client.list_database_names()
-              db_names = [db for db in db_names if db not in ["admin", "config", "local"]]
-          except OperationFailure:
-              print("⚠️ Không có quyền quét toàn bộ Cluster. Chỉ quét Database mặc định từ URI...")
-              try:
-                  default_db = client.get_default_database().name
-                  db_names = [default_db]
-              except Exception as e:
-                  print(f"❌ Không xác định được DB: {e}")
-                  exit(1)
 
-          target_data = []
-          target_db_name = ""
-
-          for db_name in db_names:
-              inventory[db_name] = {}
-              db = client[db_name]
-              try:
-                  colls = db.list_collection_names()
-                  for coll_name in colls:
-                      count = db[coll_name].count_documents({})
-                      sample = list(db[coll_name].find({}, {"_id": 0}).limit(1))
-                      
-                      inventory[db_name][coll_name] = {
-                          "document_count": count,
-                          "sample_document": sample[0] if sample else None
-                      }
-                      
-                      if coll_name in ["biology_rules", "content", "links", "keywords"] and count > 0:
-                          if coll_name == "biology_rules" or not target_data:
-                              target_data = list(db[coll_name].find({}, {"_id": 0}))
-                              target_db_name = f"{db_name}.{coll_name}"
-              except Exception as e:
-                  inventory[db_name]["error"] = str(e)
+          # Đích danh chui thẳng vào nhà rulesworld, không cần quét
+          db = client["rulesworld"]
+          rules = list(db["biology_rules"].find({}, {"_id": 0}))
 
           os.makedirs("data", exist_ok=True)
-          
-          with open("data/mongodb_inventory.json", "w", encoding="utf-8") as f:
-              json.dump(inventory, f, ensure_ascii=False, indent=4, default=str)
-          print("\n✅ Đã xuất Checklist các kho chứa: data/mongodb_inventory.json")
+          with open("data/11_biology_rules.json", "w", encoding="utf-8") as f:
+              json.dump(rules, f, ensure_ascii=False, indent=4, default=str)
 
-          if target_data:
-              with open("data/scraped_data_dump.json", "w", encoding="utf-8") as f:
-                  json.dump(target_data, f, ensure_ascii=False, indent=4, default=str)
-              print(f"✅ Đã lôi thành công {len(target_data)} bản ghi từ [{target_db_name}] về: data/scraped_data_dump.json")
-          else:
-              print("⚠️ Không tìm thấy bảng biology_rules, content hoặc links nào có dữ liệu!")
-          '
+          print(f"✅ BẮT ĐƯỢC {len(rules)} QUY LUẬT TỪ DATABASE RULESWORLD!")
+          EOF
 
-      - name: 🛟 Phao cứu sinh (Lưu file thành ZIP ngay trên giao diện)
+      - name: 🧲 Chạy Script Lấy Dữ Liệu
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+        run: python fetch_rules.py
+
+      - name: 🛟 Phao cứu sinh (Lưu file ZIP)
         if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: 11-biology-rules
+          path: data/
+          retention-days: 7
+
+      - name: 💾 Commit Lên GitHub
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add -f data/11_biology_rules.json
+          
+          if git status --porcelain | grep -qE '^[MADRC]'; then
+            git commit -m "🤖 [Auto] Bắt thành công 11 luật hóa sinh"
+            
+            TOKEN="${{ secrets.GHT_PAT_RULES }}"
+            if [ -z "$TOKEN" ]; then
+              TOKEN="${{ secrets.GITHUB_TOKEN }}"
+            fi
+            
+            git remote set-url origin "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}"
+            git pull --rebase origin ${{ github.ref_name }}
+            git push origin HEAD:${{ github.ref_name }}
+          else
+            echo "✅ Dữ liệu không đổi."
+          fi
         uses: actions/upload-artifact@v4
         with:
           name: mongodb-scan-results
