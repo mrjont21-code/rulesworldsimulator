@@ -110,18 +110,22 @@ class T5Upload:
 def run_t5(contents: list[dict], run_id: str, stats: dict):
     """Entry point cho T5"""
     uploader = T5Upload()
-    
-    # Số lượng thực tế vượt qua bài test của T4
+
     rules_to_upload_count = len(contents) if contents else 0
-    stats["rules_uploaded"] = rules_to_upload_count
-    
-    # Tính toán số lượng bị loại bỏ dựa trên thông số T3 truyền vào (nếu có)
-    validated_count = stats.get("contents_validated", 0)
-    stats["duplicates_removed"] = validated_count - rules_to_upload_count
-    
+
+    # Cộng dồn (không ghi đè) để tích lũy đúng qua nhiều keyword trong 1 session.
+    # duplicates_removed đã được main.py cộng dồn từ T4 → T5 chỉ cập nhật
+    # rules_uploaded theo batch hiện tại.
+    stats["rules_uploaded"] = stats.get("rules_uploaded", 0) + rules_to_upload_count
+
+    # duplicates_removed: lấy từ stats (đã được main.py ghi đúng từ T4),
+    # không tính lại ở đây tránh overwrite sai khi contents=[] (gọi lúc cuối session).
+    if "duplicates_removed" not in stats:
+        stats["duplicates_removed"] = 0
+
     if contents:
         uploader.upload_rules(contents, run_id)
-        
+
     uploader.save_run_log(run_id, stats)
 if __name__ == "__main__":
     logging.basicConfig(

@@ -123,8 +123,11 @@ class T0Search:
             parsed = urllib.parse.urlparse(href)
             qs = urllib.parse.parse_qs(parsed.query)
             if "q" in qs and qs["q"]:
-                return qs["q"][0]
-        return href
+                href = qs["q"][0]
+        # Bỏ fragment (#anchor) để tránh trùng lặp cùng trang với anchor khác
+        # Ví dụ: Wikipedia trả về 4 URL cùng /wiki/Carbon-based_life chỉ khác #section
+        parsed = urllib.parse.urlparse(href)
+        return urllib.parse.urlunparse(parsed._replace(fragment=""))
 
     def _build_search_url(self, engine: dict, keyword: str) -> str:
         encoded = urllib.parse.quote_plus(keyword)
@@ -247,17 +250,30 @@ class T0Search:
         return [l for l in links if l["url"] not in seen]
 
 
+# Module-level singleton: giữ session_start qua nhiều lần gọi run_t0_single_keyword()
+# Mỗi lần gọi tạo T0Search() mới (instance attribute luôn None) nên phải lưu ở đây.
+_SESSION_START: float | None = None
+
+
 def run_t0_single_keyword(keywords: list[str]) -> tuple[str, list[dict], dict] | None:
     """
     T0 Entry Point: Chỉ search 1 keyword
     Trả về: (keyword, new_links, state) hoặc None nếu hết giờ/hết keyword
     """
+    global _SESSION_START
+
     searcher = T0Search()
 
-    if searcher.session_start is None:
-        searcher.session_start = datetime.now(timezone.utc).timestamp()
+    # Khởi tạo session timer 1 lần duy nhất cho toàn bộ vòng lặp trong main.py
+    if _SESSION_START is None:
+        _SESSION_START = datetime.now(timezone.utc).timestamp()
+        logger.info(f"   🕐 Session timer bắt đầu: {datetime.fromtimestamp(_SESSION_START).strftime('%H:%M:%S')}")
+
+    searcher.session_start = _SESSION_START
 
     if not searcher._is_time_remaining():
+        logger.info("   ⏰ Session timer hết giờ, dừng T0.")
+        _SESSION_START = None  # Reset cho session Pomodoro tiếp theo
         return None
 
     result = searcher._get_next_keyword(keywords)
@@ -280,9 +296,12 @@ def run_t0_single_keyword(keywords: list[str]) -> tuple[str, list[dict], dict] |
         if link["url"] not in state.get("found_urls", []):
             state.setdefault("found_urls", []).append(link["url"])
 
-    if not new_links and state.get("total_links_found", 0) > 50:
+    # Threshold 10: thực tế mỗi lần search trả về ~20 links, nếu tìm được >= 10
+    # mà không có URL mới thì keyword đã khai thác đủ → đánh dấu exhausted để
+    # chuyển sang keyword khác, tránh lãng phí delay 30-60s mỗi vòng lặp.
+    if not new_links and state.get("total_links_found", 0) >= 10:
         state["is_exhausted"] = True
-        logger.warning("   ⚠️ Keyword EXHAUSTED")
+        logger.warning("   ⚠️ Keyword EXHAUSTED (đã khai thác đủ)")
 
     state["run_count"] = state.get("run_count", 0) + 1
     searcher.save_keyword_state(state)

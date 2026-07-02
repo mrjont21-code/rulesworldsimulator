@@ -282,9 +282,17 @@ class T2Scrape:
                     scraped.append(content_data)
                     logger.info(f"         ✅ {content_data['content_length']} chars [{content_data['skill_used']}]")
                 else:
-                    logger.warning(f"         ⚠️ Không đủ chất lượng")
+                    # Log chi tiết để debug tại sao bị loại
+                    content = content_data.get("content", "")
+                    content_lower = content.lower()
+                    kw_count = sum(1 for kw in settings.BIOLOGY_KEYWORDS if kw in content_lower)
+                    logger.warning(
+                        f"         ⚠️ Không đủ chất lượng — "
+                        f"len={len(content)} (min={settings.MIN_CONTENT_LENGTH}), "
+                        f"bio_kw={kw_count} (min={settings.MIN_BIOLOGY_KEYWORDS})"
+                    )
             else:
-                logger.error(f"         ❌ Fail")
+                logger.error(f"         ❌ Fail scrape (HTTP+Playwright đều thất bại)")
             
             # Lưu blackbook mỗi 3 links
             if i % 3 == 0:

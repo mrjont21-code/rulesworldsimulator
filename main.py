@@ -43,7 +43,7 @@ def load_keywords() -> list[str]:
 
 def process_single_keyword(keywords: list[str], run_id: str, stats: dict) -> bool:
     """
-    Xửśli 1 keyword hoàn chỉnh: Search → Classify → Scrape → Normalize → Dedup → Upload
+    Xử lý 1 keyword hoàn chỉnh: Search → Classify → Scrape → Normalize → Dedup → Upload
     Trả về True nếu xử lý thành công, False nếu hết keyword/thời gian
     """
     # === T0: Search 1 keyword ===
@@ -67,15 +67,15 @@ def process_single_keyword(keywords: list[str], run_id: str, stats: dict) -> boo
     
     # === T3: Normalize ===
     normalized = run_t3(scraped)
-    
+    stats["contents_validated"] += len(normalized)  # T3 output = số bài đạt chuẩn
+
     # === T4: Deduplicate & Save ===
     unique = run_t4(normalized, run_id)
     stats["duplicates_removed"] += len(normalized) - len(unique)
-    stats["contents_validated"] += len(unique)
-    
+
     # === T5: Upload ===
+    # T5 sẽ cộng dồn rules_uploaded nội bộ; không cộng thêm ở đây tránh double-count
     run_t5(unique, run_id, stats)
-    stats["rules_uploaded"] += len(unique)
     
     return True
 
