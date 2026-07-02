@@ -92,7 +92,7 @@ jobs:
             TOKEN="${{ secrets.GHT_PAT_RULES }}"
             if [ -z "$TOKEN" ]; then
               TOKEN="${{ secrets.GITHUB_TOKEN }}"
-              echo "⚠️ Không tìm thấy GITHUB_PAT, sẽ sử dụng GITHUB_TOKEN mặc định."
+              echo "⚠️ Không tìm thấy GHT_PAT_RULES, sẽ sử dụng GITHUB_TOKEN mặc định."
             fi
             
             git remote set-url origin "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}"
