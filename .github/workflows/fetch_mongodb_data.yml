@@ -1,14 +1,13 @@
-name: Kéo Dữ Liệu Từ MongoDB Về GitHub
+name: Kéo Dữ Liệu & Quét Kho MongoDB
 
 on:
-  # Chỉ chạy khi bạn bấm nút thủ công trên giao diện GitHub
   workflow_dispatch:
 
 permissions:
   contents: write
 
 jobs:
-  fetch-and-commit:
+  fetch-and-scan:
     runs-on: ubuntu-latest
     
     steps:
@@ -28,38 +27,82 @@ jobs:
           python -m pip install --upgrade pip
           pip install pymongo
 
-      - name: 🧲 Kết nối MongoDB & Xuất JSON
+      - name: 📡 Quét Checklist và Lấy Dữ liệu
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
-          MONGODB_DB_NAME: "rulesworld" # Sửa lại tên DB nếu của bạn khác
         run: |
           python -c '
           import os, json
           from pymongo import MongoClient
+          from pymongo.errors import OperationFailure
 
           print("Đang kết nối tới MongoDB...")
           uri = os.environ.get("MONGODB_URI")
-          db_name = os.environ.get("MONGODB_DB_NAME")
           
           if not uri:
               print("❌ LỖI: Không tìm thấy MONGODB_URI trong Secrets.")
               exit(1)
               
           client = MongoClient(uri)
-          db = client[db_name]
           
-          # Lấy toàn bộ dữ liệu từ bảng biology_rules, bỏ cột _id (vì không tương thích chuẩn JSON)
-          rules = list(db["biology_rules"].find({}, {"_id": 0}))
+          inventory = {}
+          db_names = []
           
-          # Đảm bảo thư mục data/ đã tồn tại
+          # 1. Thử lấy danh sách toàn bộ Database
+          try:
+              db_names = client.list_database_names()
+              db_names = [db for db in db_names if db not in ["admin", "config", "local"]]
+          except OperationFailure:
+              print("⚠️ Không có quyền quét toàn bộ Cluster (do giới hạn phân quyền). Chỉ quét Database mặc định từ URI...")
+              try:
+                  default_db = client.get_default_database().name
+                  db_names = [default_db]
+              except Exception as e:
+                  print(f"❌ Không xác định được DB: {e}")
+                  exit(1)
+
+          target_data = []
+          target_db_name = ""
+
+          # 2. Quét từng Database và Collection
+          for db_name in db_names:
+              inventory[db_name] = {}
+              db = client[db_name]
+              try:
+                  colls = db.list_collection_names()
+                  for coll_name in colls:
+                      count = db[coll_name].count_documents({})
+                      # Lấy 1 document làm mẫu để xem cấu trúc
+                      sample = list(db[coll_name].find({}, {"_id": 0}).limit(1))
+                      
+                      inventory[db_name][coll_name] = {
+                          "document_count": count,
+                          "sample_document": sample[0] if sample else None
+                      }
+                      
+                      # Tự động bắt mạch tìm dữ liệu cào
+                      if coll_name in ["biology_rules", "content", "links", "keywords"] and count > 0:
+                          # Ưu tiên gom bảng biology_rules
+                          if coll_name == "biology_rules" or not target_data:
+                              target_data = list(db[coll_name].find({}, {"_id": 0}))
+                              target_db_name = f"{db_name}.{coll_name}"
+              except Exception as e:
+                  inventory[db_name]["error"] = str(e)
+
           os.makedirs("data", exist_ok=True)
           
-          # Lưu thành file json
-          output_path = "data/biology_rules_dump.json"
-          with open(output_path, "w", encoding="utf-8") as f:
-              json.dump(rules, f, ensure_ascii=False, indent=4)
-              
-          print(f"✅ Đã tải thành công {len(rules)} quy luật và lưu vào {output_path}")
+          # 3. Xuất file Checklist (Inventory)
+          with open("data/mongodb_inventory.json", "w", encoding="utf-8") as f:
+              json.dump(inventory, f, ensure_ascii=False, indent=4)
+          print("\n✅ Đã xuất Checklist các kho chứa: data/mongodb_inventory.json")
+
+          # 4. Xuất file Dữ liệu cào
+          if target_data:
+              with open("data/scraped_data_dump.json", "w", encoding="utf-8") as f:
+                  json.dump(target_data, f, ensure_ascii=False, indent=4)
+              print(f"✅ Đã lôi thành công {len(target_data)} bản ghi từ [{target_db_name}] về: data/scraped_data_dump.json")
+          else:
+              print("⚠️ Không tìm thấy bảng biology_rules, content hoặc links nào có dữ liệu!")
           '
 
       - name: 💾 Commit & Push Kết Quả Lên GitHub
@@ -67,17 +110,16 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           
-          # Thêm file json vừa tải về
-          git add data/biology_rules_dump.json 2>/dev/null || true
+          # Ép Git nhận các file JSON trong thư mục data/ (Dùng -f để xuyên thủng .gitignore)
+          git add -f data/mongodb_inventory.json data/scraped_data_dump.json 2>/dev/null || true
           
           if git status --porcelain | grep -qE '^[MADRC]'; then
             echo "📝 Có dữ liệu mới từ MongoDB, đang commit..."
-            git commit -m "🤖 [Auto] Cập nhật dữ liệu từ MongoDB - $(date +'%Y-%m-%d %H:%M UTC')"
+            git commit -m "🤖 [Auto] Cập nhật dữ liệu & Checklist từ MongoDB - $(date +'%Y-%m-%d %H:%M UTC')"
             
             TOKEN="${{ secrets.GHT_PAT_RULES }}"
             if [ -z "$TOKEN" ]; then
               TOKEN="${{ secrets.GITHUB_TOKEN }}"
-              echo "⚠️ Không tìm thấy GHT_PAT_RULES, sẽ sử dụng GITHUB_TOKEN mặc định."
             fi
             
             git remote set-url origin "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}"
@@ -89,4 +131,4 @@ jobs:
           else
             echo "✅ Dữ liệu trên MongoDB không có gì mới so với file hiện tại."
           fi
-
+          
