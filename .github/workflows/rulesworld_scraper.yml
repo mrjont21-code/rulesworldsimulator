@@ -89,7 +89,7 @@ jobs:
             git commit -m "🤖 [Auto] Update scraper data - $(date +'%Y-%m-%d %H:%M UTC')"
             
             # Ưu tiên dùng GITHUB_PAT. Nếu không có, tự lùi về GITHUB_TOKEN
-            TOKEN="${{ secrets.GITHUB_PAT }}"
+            TOKEN="${{ secrets.GHT_PAT_RULES }}"
             if [ -z "$TOKEN" ]; then
               TOKEN="${{ secrets.GITHUB_TOKEN }}"
               echo "⚠️ Không tìm thấy GITHUB_PAT, sẽ sử dụng GITHUB_TOKEN mặc định."
