@@ -13,7 +13,7 @@ on:
   schedule:
     - cron: '0 2 * * *' # Chạy lúc 2h sáng UTC mỗi ngày
 
-# Cấp quyền ghi để push JSON lên repo
+# Cấp quyền ghi để push JSON lên repo (Dành cho GITHUB_TOKEN fallback)
 permissions:
   contents: write
 
@@ -30,7 +30,9 @@ jobs:
     steps:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
-        # ĐÃ BỎ token ở đây. Sẽ dùng GITHUB_TOKEN mặc định của GitHub
+        with:
+          # BẮT BUỘC: Lấy toàn bộ lịch sử Git để có thể thực hiện lệnh `git pull --rebase`
+          fetch-depth: 0
 
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
@@ -41,8 +43,9 @@ jobs:
       - name: 📦 Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install httpx beautifulsoup4 lxml pymongo pdfplumber
           # Cài Playwright + Chromium headless
+          pip install playwright
           playwright install chromium --with-deps
 
       - name: 🚀 Run Scraper Pipeline
@@ -54,7 +57,6 @@ jobs:
           python main.py --loop
         env:
           MAX_LOOPS: ${{ github.event.inputs.max_loops || '8' }}
-          MONGODB_URI: ${{ secrets.MONGODB_URI }}
 
       - name: 💾 Commit & Push Generated JSON Data
         if: always() # Luôn chạy bước này kể cả khi scrape bị lỗi
@@ -75,8 +77,23 @@ jobs:
             echo "📝 Phát hiện dữ liệu mới, đang commit..."
             git commit -m "🤖 [Auto] Update scraper data - $(date +'%Y-%m-%d %H:%M UTC')"
             
-            # Dùng GITHUB_TOKEN mặc định để push (KHÔNG CẦN TỰ TẠO PAT NỮA)
-            git push "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" "HEAD:${{ github.ref }}"
+            # Ưu tiên dùng GITHUB_PAT nếu bạn đã cấu hình trong kho lưu trữ.
+            # Nếu không tìm thấy, hệ thống sẽ tự fallback về GITHUB_TOKEN mặc định.
+            TOKEN="${{ secrets.GITHUB_PAT }}"
+            if [ -z "$TOKEN" ]; then
+              TOKEN="${{ secrets.GITHUB_TOKEN }}"
+              echo "⚠️ Không tìm thấy GITHUB_PAT, sẽ sử dụng GITHUB_TOKEN mặc định."
+            fi
+            
+            # Thiết lập lại URL của remote origin để có quyền truy cập qua Token
+            git remote set-url origin "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}"
+            
+            echo "🔄 Đang đồng bộ với remote để tránh lỗi xung đột (fetch first)..."
+            # Tải các thay đổi mới trên remote về và đặt commit cục bộ (local) của bạn lên trên cùng
+            git pull --rebase origin ${{ github.ref_name }}
+            
+            # Đẩy mã lên remote
+            git push origin HEAD:${{ github.ref_name }}
             echo "✅ Push thành công!"
           else
             echo "✅ Không có dữ liệu JSON mới để push."
