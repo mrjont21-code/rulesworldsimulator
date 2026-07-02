@@ -8,7 +8,7 @@ on:
         description: 'Số vòng Pomodoro tối đa (Mặc định: 8 vòng ~ 5.3 giờ)'
         required: false
         default: '8'
-        
+
   # Hoặc chạy tự động hàng ngày
   schedule:
     - cron: '0 2 * * *' # Chạy lúc 2h sáng UTC mỗi ngày
@@ -25,8 +25,8 @@ env:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 360 
-    
+    timeout-minutes: 360
+
     steps:
       - name: 📥 Checkout Repository
         uses: actions/checkout@v4
@@ -53,31 +53,41 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
+
           # Chạy pipeline
           python main.py --loop
         env:
           MAX_LOOPS: ${{ github.event.inputs.max_loops || '8' }}
+          # FIX: thiếu biến này khiến T4/T5 không bao giờ connect được MongoDB,
+          # settings.MONGODB_URI luôn rỗng -> self.db = None -> upload bị bỏ qua âm thầm.
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
 
       - name: 💾 Commit & Push Generated JSON Data
         if: always() # Luôn chạy bước này kể cả khi scrape bị lỗi
         run: |
           # Ép chuyển về thư mục gốc của GitHub Workspace
           cd $GITHUB_WORKSPACE
-          
+
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          
+
           echo "📂 Đang kiểm tra thay đổi trong: $(pwd)"
-          
+
           # Thêm các file/thư mục cần commit (bỏ qua lỗi nếu chưa tồn tại)
-          git add keyword_states/ data/ blackbook.json 2>/dev/null || true
-          
+          # FIX: data/ nằm trong .gitignore -> "git add data/" trước đây là no-op
+          # im lặng (không lỗi, không log), nên các file JSON cào được trong
+          # data/raw/ chưa từng thực sự lên repo. Dùng -f để vượt .gitignore chỉ
+          # cho đúng data/raw/ (không force toàn bộ data/, tránh commit nhầm
+          # scraped_golden_data.json / mongodb_inventory.json nếu bạn không
+          # muốn commit hai file đó).
+          git add -f data/raw/ 2>/dev/null || true
+          git add keyword_states/ blackbook.json 2>/dev/null || true
+
           # Kiểm tra có file nào cần commit không
           if git status --porcelain | grep -qE '^[MADRC]'; then
             echo "📝 Phát hiện dữ liệu mới, đang commit..."
             git commit -m "🤖 [Auto] Update scraper data - $(date +'%Y-%m-%d %H:%M UTC')"
-            
+
             # Ưu tiên dùng GHT_PAT_RULES nếu bạn đã cấu hình trong kho lưu trữ.
             # Nếu không tìm thấy, hệ thống sẽ tự fallback về GITHUB_TOKEN mặc định.
             TOKEN="${{ secrets.GHT_PAT_RULES }}"
@@ -85,14 +95,14 @@ jobs:
               TOKEN="${{ secrets.GITHUB_TOKEN }}"
               echo "⚠️ Không tìm thấy GHT_PAT_RULES, sẽ sử dụng GITHUB_TOKEN mặc định."
             fi
-            
+
             # Thiết lập lại URL của remote origin để có quyền truy cập qua Token
             git remote set-url origin "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}"
-            
+
             echo "🔄 Đang đồng bộ với remote để tránh lỗi xung đột (fetch first)..."
             # Tải các thay đổi mới trên remote về và đặt commit cục bộ (local) của bạn lên trên cùng
             git pull --rebase origin ${{ github.ref_name }}
-            
+
             # Đẩy mã lên remote
             git push origin HEAD:${{ github.ref_name }}
             echo "✅ Push thành công!"
