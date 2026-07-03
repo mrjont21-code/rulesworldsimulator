@@ -1,0 +1,77 @@
+name: Dọn Rác & Xóa Sạch MongoDB
+
+on:
+  # Chỉ cho phép chạy thủ công để tránh tai nạn
+  workflow_dispatch:
+
+jobs:
+  wipe-database:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 📦 Cài đặt thư viện
+        run: pip install pymongo
+
+      - name: 🧨 Kích hoạt quy trình dọn dẹp
+        env:
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+        run: |
+          python -c '
+          import os
+          from pymongo import MongoClient
+
+          print("🚨 BẮT ĐẦU QUÁ TRÌNH DỌN DẸP MONGODB 🚨")
+          
+          uri = os.environ.get("MONGODB_URI")
+          if not uri:
+              print("❌ LỖI: Không tìm thấy MONGODB_URI.")
+              exit(1)
+              
+          client = MongoClient(uri)
+
+          # 1. Các Database hệ thống của MongoDB (Tuyệt đối không đụng vào)
+          system_dbs = ["admin", "config", "local"]
+
+          # 2. Các Database cốt lõi của bạn (Được bảo vệ để không mất cấu hình game/thế giới)
+          # Nếu bạn muốn xóa TẤT CẢ không chừa thứ gì, hãy để trống mảng này: protected_dbs = []
+          protected_dbs = ["chimera_permanent", "sample_mflix"]
+
+          try:
+              db_names = client.list_database_names()
+          except Exception as e:
+              print(f"⚠️ Không có quyền quét toàn bộ Cluster: {e}")
+              print("Tiến hành xóa đích danh các Database rác thường gặp...")
+              db_names = ["world_lore_db", "rulesworld", "chimera_purgatory", "chimera_canon", "test"]
+
+          deleted_count = 0
+
+          # 3. Tiến hành càn quét
+          for db_name in db_names:
+              if db_name in system_dbs or db_name in protected_dbs:
+                  print(f"🛡️ Bỏ qua Database được bảo vệ: [{db_name}]")
+                  continue
+
+              print(f"\n🗑️ Đang truy cập Database: [{db_name}]...")
+              db = client[db_name]
+              
+              try:
+                  collections = db.list_collection_names()
+                  if not collections:
+                      print("   - Database trống.")
+                      continue
+                      
+                  for coll in collections:
+                      db.drop_collection(coll)
+                      deleted_count += 1
+                      print(f"   💥 Đã xóa sạch bảng: {coll}")
+              except Exception as e:
+                  print(f"   ❌ Lỗi khi dọn dẹp {db_name}: {e}")
+
+          print(f"\n✅ HOÀN TẤT! Đã dọn dẹp thành công {deleted_count} bảng (collection) rác.")
+          '
+
