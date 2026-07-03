@@ -1,0 +1,15 @@
+{
+  "keyword": "monster acid attack ability",
+  "normalized": "monster_acid_attack_ability",
+  "total_links_found": 3,
+  "links_scraped": 0,
+  "scraped_urls": [],
+  "found_urls": [
+    "https://chrome.google.com/webstore/detail/startpage-%E2%80%94-private-searc/fgmjlmbojbkmdpofahffgcpkhkngfpef",
+    "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light",
+    "https://mastodon.social/@StartpageSearch"
+  ],
+  "last_run": "2026-07-03T06:32:01.022166+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}

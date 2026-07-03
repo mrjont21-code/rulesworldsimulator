@@ -5,9 +5,10 @@
     "skill": "PLAYWRIGHT"
   },
   "www.reddit.com": {
-    "failures": 18,
-    "status": "active",
-    "skill": "HTTP"
+    "failures": 23,
+    "status": "banned",
+    "skill": "HTTP",
+    "banned_until": "2026-07-10T03:41:17.649454+00:00"
   },
   "astronomy.stackexchange.com": {
     "failures": 1,
@@ -67,7 +68,7 @@
   "link.springer.com": {
     "failures": 0,
     "status": "active",
-    "skill": "HTTP_SOUP"
+    "skill": "PLAYWRIGHT"
   },
   "www.hou.usra.edu": {
     "failures": 0,
@@ -335,9 +336,10 @@
     "skill": "HTTP"
   },
   "worldbuilding.stackexchange.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "PLAYWRIGHT"
+    "failures": 5,
+    "status": "banned",
+    "skill": "PLAYWRIGHT",
+    "banned_until": "2026-07-10T03:43:23.238858+00:00"
   },
   "eeyore.astro.illinois.edu": {
     "failures": 1,
@@ -368,5 +370,476 @@
     "failures": 0,
     "status": "active",
     "skill": "PLAYWRIGHT"
+  },
+  "thedicesociety.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "blog.worldanvil.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.jamescambias.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "eledris.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "michaeltedin.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "multispeciesworldbuilding.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.adamasnemesis.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "allthetropes.org": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "hero.fandom.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "tropedia.fandom.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "releasethatwitch.fandom.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "scifi.stackexchange.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "m.webnovel.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "best-sci-fi-books.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.scribblehub.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.goodreads.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "vocal.media": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "gamerant.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "status.brave.app": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "microsoftedge.microsoft.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.startmail.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "powerlisting.fandom.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "civilization.fandom.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.cambridge.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "info.designatronics.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "writings.stephenwolfram.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.technologyreview.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.aanda.org": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "futurism.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.popularmechanics.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.forbes.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "chrome.google.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "memory-gamma.fandom.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "creativesci-fi.fandom.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "sciencefictionfantasy.quora.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "captaintime.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "politicalorders.substack.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "screenrant.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "mastodon.social": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "forums.spacebattles.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "writersense.blogspot.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "dive-into-worldbuilding.blogspot.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "literarycompass.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.scinexic.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "99percentinvisible.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "architizer.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.domusweb.it": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.architectsjournal.co.uk": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.wired.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "weburbanist.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "illustrarch.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.theguardian.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "cwesleyclough.wordpress.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "aap.cornell.edu": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "addons.mozilla.org": {
+    "failures": 3,
+    "status": "banned",
+    "skill": "HTTP",
+    "banned_until": "2026-07-10T05:49:55.722354+00:00"
+  },
+  "writing.stackexchange.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "cosmobiota.substack.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.infyways.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "aeon.co": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "musely.ai": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "omnia.sas.upenn.edu": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "andrewggibson.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "mitpress.mit.edu": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "grokipedia.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.nature.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.mentalfloss.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "hangar1publishing.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "clarkesworldmagazine.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.syfy.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "linguatranslator.app": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.barnesandnoble.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "sf-encyclopedia.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "absolutewrite.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "digitalcommons.unomaha.edu": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.smithsonianmag.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.worldreligionnews.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "perennialfollower.wordpress.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "malcolmnicholson.wordpress.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.sciphijournal.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "selfawarepatterns.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.bartleby.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "psyche.co": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.wikidata.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "snl.no": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "purl.obolibrary.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.viviansayan.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.worldworkings.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "marginalrevolution.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "astrapublishinghouse.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "beta.thestorygraph.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.libraryjournal.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.foreignaffairsreview.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.fantasticfiction.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "wiki.hoodedhorse.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
   }
 }

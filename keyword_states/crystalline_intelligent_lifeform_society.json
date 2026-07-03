@@ -1,0 +1,15 @@
+{
+  "keyword": "crystalline intelligent lifeform society",
+  "normalized": "crystalline_intelligent_lifeform_society",
+  "total_links_found": 3,
+  "links_scraped": 0,
+  "scraped_urls": [],
+  "found_urls": [
+    "https://addons.mozilla.org/firefox/downloads/latest/startpage-private-search",
+    "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light",
+    "https://mastodon.social/@StartpageSearch"
+  ],
+  "last_run": "2026-07-03T05:45:28.426418+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}

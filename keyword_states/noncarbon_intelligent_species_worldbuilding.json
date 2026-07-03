@@ -1,0 +1,40 @@
+{
+  "keyword": "non-carbon intelligent species worldbuilding",
+  "normalized": "noncarbon_intelligent_species_worldbuilding",
+  "total_links_found": 20,
+  "links_scraped": 7,
+  "scraped_urls": [
+    "https://thedicesociety.com/species/",
+    "https://blog.worldanvil.com/worldbuilding/sapient-species-cultures-fantasy-economy/",
+    "https://en.wikipedia.org/wiki/Hypothetical_types_of_biochemistry",
+    "https://worldbuilding.stackexchange.com/questions/60478/alternatives-to-cellular-carbon-based-lifeforms",
+    "https://eledris.com/creating-intelligent-species/",
+    "https://michaeltedin.com/worldbuilding-102-creating-fantasy-societies-humanoids-and-non-humans/",
+    "https://www.adamasnemesis.com/2020/03/25/worldbuilding-avian-intelligence/"
+  ],
+  "found_urls": [
+    "https://eledris.com/creating-intelligent-species/",
+    "https://worldbuilding.stackexchange.com/questions/164048/what-sort-of-world-would-help-prevent-an-intelligent-species-from-discovering-ev",
+    "https://michaeltedin.com/worldbuilding-102-creating-fantasy-societies-humanoids-and-non-humans/",
+    "https://thedicesociety.com/species/",
+    "https://www.reddit.com/r/worldbuilding/comments/nme1h4/whats_your_worlds_nonbiological_species/",
+    "https://worldbuilding.stackexchange.com/questions/60478/alternatives-to-cellular-carbon-based-lifeforms",
+    "https://www.reddit.com/r/worldbuilding/comments/16yx6sr/nonhumanoid_species/",
+    "https://worldbuilding.stackexchange.com/questions/257924/could-a-species-that-is-intelligent-but-non-sentient-be-able-to-create-advance",
+    "https://multispeciesworldbuilding.com/",
+    "https://blog.worldanvil.com/worldbuilding/sapient-species-cultures-fantasy-economy/",
+    "https://www.reddit.com/r/worldbuilding/comments/sjgx7k/how_realistic_is_it_to_have_multiple_intelligent/",
+    "https://www.jamescambias.com/blog/2024/02/notes-on-worldbuilding-part-17-aliens.html",
+    "https://en.wikipedia.org/wiki/Hypothetical_types_of_biochemistry",
+    "https://www.adamasnemesis.com/2020/03/25/worldbuilding-avian-intelligence/",
+    "https://www.reddit.com/r/worldbuilding/comments/4aesdq/hard_sciencefiction_worldbuilders_what_are_your/",
+    "https://www.reddit.com/r/worldbuilding/comments/1ssyt3w/could_an_intelligent_species_be_solitary_could_a/",
+    "https://worldbuilding.stackexchange.com/questions/2855/is-metal-based-or-other-non-carbon-based-life-realistic",
+    "https://worldbuilding.stackexchange.com/questions/249610/does-the-inclusion-of-common-non-humanoid-alien-species-make-rare-humanoid-alien",
+    "https://worldbuilding.stackexchange.com/questions/164050/design-criteria-for-non-humanoid-aliens-anatomy",
+    "https://worldbuilding.stackexchange.com/questions/222717/organic-replacement-for-ai"
+  ],
+  "last_run": "2026-07-03T03:44:20.272773+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}
