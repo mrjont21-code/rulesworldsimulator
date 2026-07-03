@@ -1,0 +1,16 @@
+{
+  "keyword": "Europa ocean life search",
+  "normalized": "europa_ocean_life_search",
+  "total_links_found": 4,
+  "links_scraped": 0,
+  "scraped_urls": [],
+  "found_urls": [
+    "https://microsoftedge.microsoft.com/addons/detail/startpage-%E2%80%94-private-searc/jogphcaagccljpbnoddeknjjngefidmm",
+    "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light",
+    "https://www.reddit.com/r/StartpageSearch/",
+    "https://mastodon.social/@StartpageSearch"
+  ],
+  "last_run": "2026-07-03T01:15:31.880042+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}

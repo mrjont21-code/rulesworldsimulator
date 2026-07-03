@@ -1,0 +1,42 @@
+{
+  "keyword": "theoretical biology frameworks",
+  "normalized": "theoretical_biology_frameworks",
+  "total_links_found": 20,
+  "links_scraped": 9,
+  "scraped_urls": [
+    "https://en.wikipedia.org/wiki/Mathematical_and_theoretical_biology",
+    "https://www.santafe.edu/research/results/papers/2124-the-challenges-and-scope-of-theoretical-biolo",
+    "https://www.nationalacademies.org/projects/BKSX-K-06-04-A/publication/12026",
+    "https://www.nature.com/collections/cfhfejghec",
+    "https://www.academia.edu/22848383/Extended_physics_as_theoretical_framework_for_system_biology",
+    "https://elifesciences.org/articles/07158",
+    "https://www.frontiersin.org/journals/bioengineering-and-biotechnology/articles/10.3389/fbioe.2023.1266298/full",
+    "https://www.linkedin.com/pulse/theoretical-biology-exploring-intersection-mathematics-biopatrika",
+    "https://sciedge.us/theoretical-biology/"
+  ],
+  "found_urls": [
+    "https://en.wikipedia.org/wiki/Mathematical_and_theoretical_biology",
+    "https://www.lifescied.org/doi/10.1187/cbe.21-05-0134",
+    "https://www.researchgate.net/publication/230844762_Toward_a_Conceptual_Framework_for_Biology",
+    "https://www.journals.uchicago.edu/doi/10.1086/655117",
+    "https://academic.oup.com/icb/article/54/5/736/2797828",
+    "https://elifesciences.org/articles/07158",
+    "https://www.sciencedirect.com/science/article/abs/pii/S002228362030156X",
+    "https://www.aimspress.com/article/doi/10.3934/biophy.2020013",
+    "https://pubmed.ncbi.nlm.nih.gov/20919632/",
+    "https://www.santafe.edu/research/results/papers/2124-the-challenges-and-scope-of-theoretical-biolo",
+    "https://www.sciencedirect.com/science/article/abs/pii/S0022519311000774",
+    "https://nap.nationalacademies.org/resource/12026/role_of_theory_final.pdf",
+    "https://www.frontiersin.org/journals/bioengineering-and-biotechnology/articles/10.3389/fbioe.2023.1266298/full",
+    "https://www.linkedin.com/pulse/theoretical-biology-exploring-intersection-mathematics-biopatrika",
+    "https://www.nationalacademies.org/projects/BKSX-K-06-04-A/publication/12026",
+    "https://www.nature.com/collections/cfhfejghec",
+    "https://www.researchgate.net/publication/341905269_Theoretical_frameworks_and_models_for_biological_systems",
+    "https://sciedge.us/theoretical-biology/",
+    "https://www.academia.edu/22848383/Extended_physics_as_theoretical_framework_for_system_biology",
+    "https://www.britannica.com/topic/mathematical-biology"
+  ],
+  "last_run": "2026-07-03T00:26:09.111168+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}

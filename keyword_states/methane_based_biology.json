@@ -1,0 +1,43 @@
+{
+  "keyword": "methane based biology",
+  "normalized": "methane_based_biology",
+  "total_links_found": 20,
+  "links_scraped": 10,
+  "scraped_urls": [
+    "https://en.wikipedia.org/wiki/Methanogenesis",
+    "https://www.nature.com/research-intelligence/nri-topic-summaries/methanotrophic-bacteria-and-bioconversion-of-methane-micro-66629",
+    "https://www.nature.com/articles/s41564-017-0091-5",
+    "https://www.nature.com/articles/s41467-026-70448-6",
+    "https://pubmed.ncbi.nlm.nih.gov/35246697/",
+    "https://www.mdpi.com/journal/methane/special_issues/methane_biotechnologies",
+    "https://www.frontiersin.org/journals/microbiology/articles/10.3389/fmicb.2021.636486/full",
+    "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncim/C1157690",
+    "http://www.wikidata.org/entity/Q22275999",
+    "https://amigo.geneontology.org/amigo/term/GO%3A0015948"
+  ],
+  "found_urls": [
+    "https://en.wikipedia.org/wiki/Methanogenesis",
+    "https://www.sciencedirect.com/science/article/abs/pii/S016777992030202X",
+    "https://academic.oup.com/nsr/article/13/2/nwaf547/8362693",
+    "https://www.nature.com/research-intelligence/nri-topic-summaries/methanotrophic-bacteria-and-bioconversion-of-methane-micro-66629",
+    "https://www.sciencedirect.com/science/article/abs/pii/S0196890424006745",
+    "https://www.nature.com/articles/s41564-017-0091-5",
+    "https://www.mdpi.com/journal/methane/special_issues/methane_biotechnologies",
+    "https://www.nature.com/articles/s41467-026-70448-6",
+    "https://en.wikipedia.org/wiki/Hypothetical_types_of_biochemistry",
+    "https://www.pnas.org/doi/10.1073/pnas.2310046120",
+    "https://technology.nasa.gov/patent/TOP2-283",
+    "https://journals.asm.org/doi/10.1128/mmbr.00024-22",
+    "https://www.frontiersin.org/journals/microbiology/articles/10.3389/fmicb.2021.636486/full",
+    "https://pubmed.ncbi.nlm.nih.gov/35246697/",
+    "https://www.sciencedirect.com/topics/agricultural-and-biological-sciences/methane",
+    "https://evsexplore.semantics.cancer.gov/evsexplore/concept/ncim/C1157690",
+    "http://www.wikidata.org/entity/Q22275999",
+    "https://openalex.org/C2778589620",
+    "https://amigo.geneontology.org/amigo/term/GO%3A0015948",
+    "https://hackerone.com/brave"
+  ],
+  "last_run": "2026-07-02T22:28:01.612001+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}

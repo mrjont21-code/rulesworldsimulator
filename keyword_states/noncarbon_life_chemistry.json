@@ -1,0 +1,40 @@
+{
+  "keyword": "non-carbon life chemistry",
+  "normalized": "noncarbon_life_chemistry",
+  "total_links_found": 20,
+  "links_scraped": 7,
+  "scraped_urls": [
+    "https://www.space.com/alien-life-not-carbon-based-autocatalysis-common",
+    "https://chemistry.stackexchange.com/questions/32814/has-a-non-carbon-based-form-of-life-been-discovered-since-2010",
+    "https://www.quora.com/What-is-a-non-carbon-based-life-form",
+    "https://guide-scientific.com/general-knowledge/how-likely-are-non-carbon-life-forms/",
+    "https://www.wikidoc.org/index.php/Alternative_biochemistry",
+    "https://medium.com/word-garden/exploring-the-possibilities-of-non-carbon-based-life-forms-0862fbd7df0d",
+    "https://www.wionews.com/science/alien-life-unlike-humans-may-not-be-carbon-based-suggests-new-study-639916"
+  ],
+  "found_urls": [
+    "https://en.wikipedia.org/wiki/Hypothetical_types_of_biochemistry",
+    "https://www.reddit.com/r/askscience/comments/2v5vij/can_noncarbon_based_lifeforms_exist/",
+    "https://chemistry.stackexchange.com/questions/47432/non-carbon-based-life-forms-on-hot-planets",
+    "https://www.reddit.com/r/biology/comments/vgnz36/noncarbon_based_life/",
+    "https://chemistry.stackexchange.com/questions/32814/has-a-non-carbon-based-form-of-life-been-discovered-since-2010",
+    "https://www.space.com/alien-life-not-carbon-based-autocatalysis-common",
+    "https://guide-scientific.com/general-knowledge/how-likely-are-non-carbon-life-forms/",
+    "https://reasons.org/explore/blogs/impact-events/does-life-need-to-be-carbon-based",
+    "https://www.researchgate.net/publication/377266623_Challenges_and_possibilities_of_silicon-based_life_Exploring_an_alternative_to_carbon",
+    "https://en.wikipedia.org/wiki/Carbon-based_life",
+    "https://www.nbcnews.com/mach/science/silicon-based-life-may-be-more-just-science-fiction-n748266",
+    "https://www.wikidoc.org/index.php/Alternative_biochemistry",
+    "https://medium.com/word-garden/exploring-the-possibilities-of-non-carbon-based-life-forms-0862fbd7df0d",
+    "https://www.quora.com/What-is-a-non-carbon-based-life-form",
+    "https://www.wionews.com/science/alien-life-unlike-humans-may-not-be-carbon-based-suggests-new-study-639916",
+    "https://www.reddit.com/r/AskScienceDiscussion/comments/as9hwa/why_is_it_believed_that_a_noncarbon_based_life/",
+    "https://www.reddit.com/r/askscience/comments/1b6a6y/is_it_possible_for_there_to_be_noncarbon_lifeforms/",
+    "https://bigthink.com/hard-science/carbon-silicon-alien-life/",
+    "https://medium.com/@Merrysci/how-a-silicon-based-life-would-look-like-ee2a9ec181dd",
+    "https://www.scientificamerican.com/article/could-silicon-be-the-basi/"
+  ],
+  "last_run": "2026-07-02T23:36:32.507168+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}
