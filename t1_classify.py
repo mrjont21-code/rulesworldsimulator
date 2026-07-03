@@ -12,80 +12,95 @@ logger = logging.getLogger(__name__)
 
 class T1Classify:
     def __init__(self):
-        # Mở rộng domains cho astrobiology
+        # Bảng ưu tiên nguồn — đảo ngược so với thiết kế "nhà khoa học" cũ.
+        # Pipeline này không xây bách khoa toàn thư, nó xây kho vũ khí thị
+        # giác và drama cho kịch bản. Các trang thiết kế giả tưởng/tropes đã
+        # có sẵn văn phong kịch tính, hệ sinh thái phân tầng giai cấp, kẻ đi
+        # săn/mồi nguy hiểm — đốt cháy xung đột cho kịch bản. Academic/gov
+        # viết quá trung lập, khô khan -> hạ xuống hàng thứ yếu (tư liệu tham
+        # chiếu khi cần một cơ chế vật lý cụ thể, không phải nguồn chính).
         self.domain_rules = {
-            # Academic/Research - High priority
-            "arxiv.org": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 1},
-            "nature.com": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 1},
-            "science.org": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 1},
-            "ncbi.nlm.nih.gov": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 1},
-            "pubmed.ncbi.nlm.nih.gov": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 1},
-            "researchgate.net": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 1},
-            "academia.edu": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 1},
-            "scholar.google.com": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 1},
-            "doi.org": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 1},
-            "springer.com": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 1},
-            "wiley.com": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 1},
-            "elsevier.com": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 1},
-            "plos.org": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 1},
-
-            # Government/Space Agencies - High priority
-            "nasa.gov": {"label": "government_research", "scraper_type": "html_simple", "priority": 1},
-            "esa.int": {"label": "government_research", "scraper_type": "html_simple", "priority": 1},
-            "jaxa.jp": {"label": "government_research", "scraper_type": "html_simple", "priority": 1},
-
-            # Wikipedia - High priority (Nguồn cung cấp luật thế giới/hóa sinh cực mạnh)
-            "wikipedia.org": {"label": "wiki_article", "scraper_type": "html_simple", "priority": 1},
-
-            # Worldbuilding / Speculative fiction - High priority (Nguồn chất liệu
-            # giả tưởng chính cho kịch bản: sinh vật, hệ sinh thái, xã hội hư cấu
-            # ngoài carbon. Trước đây bị hạ xuống priority 5 chung với fandom.com
-            # generic nên gần như không bao giờ được cào trong ngân sách 20
-            # link/session -> tách riêng và nâng lên ngang academic.
+            # Worldbuilding / Speculative fiction / Tropes - TOP priority.
+            # Đây là nguồn chất liệu chính: nguyên mẫu sinh vật, cơ chế di
+            # chuyển/chiến đấu/cái chết, xã hội hư cấu ngoài carbon.
             "orionsarm.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
             "worldanvil.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
             "projectperditus.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
             "spec-evo.fandom.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
             "speculativeevolution.fandom.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
             "amphiterra.weebly.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
-            "tvtropes.org": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 2},
+            "tvtropes.org": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
+            "mythcreants.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
+            "worldbuildingschool.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
+            "projectrho.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
 
-            # Science News/Magazines - Medium priority
-            "scientificamerican.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 2},
-            "space.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 2},
-            "universetoday.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 2},
-            "astrobio.net": {"label": "science_news", "scraper_type": "html_simple", "priority": 2},
-            "phys.org": {"label": "science_news", "scraper_type": "html_simple", "priority": 2},
-            "sciencedaily.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 2},
-            "newscientist.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 2},
-            "quantamagazine.org": {"label": "science_news", "scraper_type": "html_simple", "priority": 2},
-            "wired.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 2},
-            "theverge.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 2},
+            # Wikipedia - vẫn cao vì cung cấp luật nền vật lý/sinh học đáng
+            # tin cậy để "neo" các cơ chế giả tưởng, nhưng không còn số 1 mặc
+            # định như academic paper trước đây.
+            "wikipedia.org": {"label": "wiki_article", "scraper_type": "html_simple", "priority": 2},
 
-            # Community/Discussion - Medium priority (nguồn ý tưởng sáng tạo tốt
-            # cho worldbuilding, nâng từ 3 lên 2 ngang science_news)
+            # Community/Discussion - nguồn ý tưởng sáng tạo, giọng văn tự
+            # nhiên, giàu tính kịch (r/worldbuilding, r/speculativeevolution).
             "reddit.com": {"label": "community_discussion", "scraper_type": "reddit", "priority": 2},
+
+            # Wiki/Fandom generic - nâng từ 5 lên 2 vì phần lớn traffic vẫn là
+            # fandom khoa học viễn tưởng/quái vật hữu ích cho concept art, chỉ
+            # còn hạ nhẹ so với worldbuilding chuyên biệt ở trên.
+            "fandom.com": {"label": "wiki_fandom", "scraper_type": "html_simple", "priority": 2},
+            "wikia.com": {"label": "wiki_fandom", "scraper_type": "html_simple", "priority": 2},
+            "wikidot.com": {"label": "wiki_fandom", "scraper_type": "html_simple", "priority": 2},
             "stackexchange.com": {"label": "community_discussion", "scraper_type": "html_simple", "priority": 3},
             "quora.com": {"label": "community_discussion", "scraper_type": "html_simple", "priority": 3},
 
-            # Wiki/Fandom generic - Lowest priority (Cố tình hạ cấp để tránh cào
-            # nhầm quái vật cụ thể của các fandom KHÔNG liên quan worldbuilding
-            # khoa học viễn tưởng, vd. game/anime fandom. Các domain worldbuilding
-            # liên quan trực tiếp đã được whitelist riêng ở priority 1 phía trên).
-            "fandom.com": {"label": "wiki_fandom", "scraper_type": "html_simple", "priority": 5},
-            "wikia.com": {"label": "wiki_fandom", "scraper_type": "html_simple", "priority": 5},
-            "wikidot.com": {"label": "wiki_fandom", "scraper_type": "html_simple", "priority": 5},
+            # Science News/Magazines - hạ xuống priority 3: vẫn hữu ích để
+            # "vay mượn" một hiệu ứng thị giác/cơ chế môi trường cụ thể, nhưng
+            # không còn là nguồn ưu tiên hàng đầu.
+            "scientificamerican.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 3},
+            "space.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 3},
+            "universetoday.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 3},
+            "astrobio.net": {"label": "science_news", "scraper_type": "html_simple", "priority": 3},
+            "phys.org": {"label": "science_news", "scraper_type": "html_simple", "priority": 3},
+            "sciencedaily.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 3},
+            "newscientist.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 3},
+            "quantamagazine.org": {"label": "science_news", "scraper_type": "html_simple", "priority": 3},
+            "wired.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 3},
+            "theverge.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 3},
+
+            # Academic/Research - hạ xuống thấp nhất trong nhóm có nhãn riêng.
+            # Văn phong quá trung lập/khô khan để LLM học cách viết kịch tính,
+            # nhưng vẫn giữ lại làm tư liệu đối chiếu khi cần độ chính xác.
+            "arxiv.org": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
+            "nature.com": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
+            "science.org": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
+            "ncbi.nlm.nih.gov": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
+            "pubmed.ncbi.nlm.nih.gov": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
+            "researchgate.net": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
+            "academia.edu": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
+            "scholar.google.com": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
+            "doi.org": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
+            "springer.com": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
+            "wiley.com": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
+            "elsevier.com": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
+            "plos.org": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
+
+            # Government/Space Agencies - thấp nhất. Văn phong báo cáo chính
+            # thức gần như không có giá trị kịch tính trực tiếp.
+            "nasa.gov": {"label": "government_research", "scraper_type": "html_simple", "priority": 5},
+            "esa.int": {"label": "government_research", "scraper_type": "html_simple", "priority": 5},
+            "jaxa.jp": {"label": "government_research", "scraper_type": "html_simple", "priority": 5},
         }
 
-        # Path-based rules
+        # Path-based rules (đồng bộ thang ưu tiên mới: worldbuilding/tropes=1,
+        # wiki/community=2, science news=3, academic=4)
         self.path_rules = [
+            (r"/wiki/|/species/|/lore/|/world/", "worldbuilding_fiction", "html_simple", 1),
             (r"\.pdf$", "pdf_document", "pdf", 2),
             (r"/blog/", "blog_article", "html_simple", 2),
             (r"/article/", "blog_article", "html_simple", 2),
-            (r"/news/", "science_news", "html_simple", 2),
-            (r"/research/", "academic_paper", "html_simple", 1),
-            (r"/paper/", "academic_paper", "html_simple", 1),
-            (r"/publication/", "academic_paper", "html_simple", 1),
+            (r"/news/", "science_news", "html_simple", 3),
+            (r"/research/", "academic_paper", "html_simple", 4),
+            (r"/paper/", "academic_paper", "html_simple", 4),
+            (r"/publication/", "academic_paper", "html_simple", 4),
         ]
 
     def classify_link(self, url: str) -> dict:

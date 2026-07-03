@@ -38,13 +38,15 @@ class T3Normalize:
         # Generate rule_id
         rule_id = hashlib.md5(f"{url}_{title}".encode()).hexdigest()[:12]
 
-        # Tóm tắt bằng extractive summarizer (thuần Python, không LLM) - dùng
-        # làm tư liệu tham khảo cho LLM viết kịch bản ở bước sau, không cần
-        # tốn API call ở giai đoạn thu thập dữ liệu này.
+        # Tóm tắt bằng extractive summarizer (thuần Python, không LLM) - săn
+        # lùng câu miêu tả hỗn loạn/điểm yếu/hiệu ứng thị giác (DRAMA_KEYWORDS)
+        # thay vì câu chứa nhiều thuật ngữ hóa sinh hàn lâm, để làm tư liệu
+        # tham khảo giàu tính kịch cho LLM viết kịch bản ở bước sau.
         summary_data = extractive_summary(
             content,
-            domain_keywords=settings.BIOLOGY_KEYWORDS,
+            domain_keywords=settings.DRAMA_KEYWORDS,
             max_sentences=6,
+            keyword_boost=3.0,
         )
 
         return {

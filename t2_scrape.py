@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 from config import settings
 from stealth import get_stealth_headers, human_delay
 from skills import extract_spa_json_data
+from domain_ban import record_failure, record_success
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +81,9 @@ class T2Scrape:
         traps = [
             "enable javascript and cookies", "just a moment",
             "checking the site connection", "verify you are human",
-            "access denied", "403 forbidden", "cloudflare", "captcha"
+            "access denied", "403 forbidden", "cloudflare", "captcha",
+            "attention required", "unusual traffic", "are you a robot",
+            "ddos protection by", "please wait while we verify",
         ]
         return not any(t in text.lower() for t in traps)
 
@@ -184,7 +187,13 @@ class T2Scrape:
 
     # Đường dẫn thường là trang video/media-only -> ít/không có text để cào,
     # tốn 8-20s delay + browser launch vô ích. Bỏ qua ngay từ đầu.
-    SKIP_URL_PATTERNS = ("/video/", "/videos/", "/watch", "youtube.com", "vimeo.com")
+    SKIP_URL_PATTERNS = (
+        "/video/", "/videos/", "/watch", "youtube.com", "vimeo.com",
+        # Trang phụ trợ MediaWiki/Fandom/Miraheze (edit/login/lịch sử sửa/
+        # trang đặc biệt) không chứa nội dung lore thực -> lãng phí 1 slot.
+        "action=edit", "action=history", "special:", "veaction=",
+        "/user:", "/talk:", "printable=yes", "oldid=",
+    )
 
     def _is_video_only_url(self, url: str) -> bool:
         u = url.lower()
@@ -207,9 +216,10 @@ class T2Scrape:
         if scraper_type == "reddit":
             result = self._scrape_reddit(url)
             if result:
-                self.blackbook[domain]["failures"] = 0
+                record_success(self.blackbook, domain)
                 return result
-            self.blackbook[domain]["failures"] += 1
+            if record_failure(self.blackbook, domain):
+                logger.warning(f"         🚫 Banned domain (7 ngày): {domain}")
             return None
         
         # Normal flow
@@ -234,7 +244,7 @@ class T2Scrape:
         
         if data:
             self.blackbook[domain]["skill"] = skill_used if skill_used != "SPA_JSON" else "HTTP"
-            self.blackbook[domain]["failures"] = 0
+            record_success(self.blackbook, domain)
             title = link.get("title", "")
             if not title or len(title) < 10:
                 title = data.split("\n")[0][:100]
@@ -244,10 +254,8 @@ class T2Scrape:
                 "skill_used": skill_used
             }
         else:
-            self.blackbook[domain]["failures"] = self.blackbook[domain].get("failures", 0) + 1
-            if self.blackbook[domain]["failures"] >= 3:
-                self.blackbook[domain]["status"] = "banned"
-                logger.warning(f"         🚫 Banned domain: {domain}")
+            if record_failure(self.blackbook, domain):
+                logger.warning(f"         🚫 Banned domain (7 ngày): {domain}")
             return None
 
     def validate_content(self, content_data: dict) -> bool:
@@ -255,8 +263,8 @@ class T2Scrape:
         if len(content) < settings.MIN_CONTENT_LENGTH:
             return False
         content_lower = content.lower()
-        count = sum(1 for kw in settings.BIOLOGY_KEYWORDS if kw in content_lower)
-        return count >= settings.MIN_BIOLOGY_KEYWORDS
+        count = sum(1 for kw in settings.DRAMA_KEYWORDS if kw in content_lower)
+        return count >= settings.MIN_DRAMA_KEYWORDS
 
     def scrape_links(self, links: list[dict]) -> list[dict]:
         """Cào từng link 1 - RẤT CHẬM"""
@@ -285,11 +293,11 @@ class T2Scrape:
                     # Log chi tiết để debug tại sao bị loại
                     content = content_data.get("content", "")
                     content_lower = content.lower()
-                    kw_count = sum(1 for kw in settings.BIOLOGY_KEYWORDS if kw in content_lower)
+                    kw_count = sum(1 for kw in settings.DRAMA_KEYWORDS if kw in content_lower)
                     logger.warning(
                         f"         ⚠️ Không đủ chất lượng — "
                         f"len={len(content)} (min={settings.MIN_CONTENT_LENGTH}), "
-                        f"bio_kw={kw_count} (min={settings.MIN_BIOLOGY_KEYWORDS})"
+                        f"drama_kw={kw_count} (min={settings.MIN_DRAMA_KEYWORDS})"
                     )
             else:
                 logger.error(f"         ❌ Fail scrape (HTTP+Playwright đều thất bại)")

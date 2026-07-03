@@ -4,7 +4,7 @@ Extractive Summarizer - THUẦN PYTHON, KHÔNG LLM, KHÔNG ML MODEL
 Kỹ thuật: Luhn's Algorithm (1958) cải tiến
 - Tách câu bằng regex (không cần nltk/spacy tải model)
 - Tính điểm mỗi từ theo tần suất xuất hiện (loại stopword)
-- Boost điểm cho câu chứa BIOLOGY_KEYWORDS (từ config.py)
+- Boost điểm cho câu chứa DRAMA_KEYWORDS (từ config.py)
 - Boost nhẹ câu ở đầu đoạn văn (thường chứa luận điểm chính)
 - Chọn N câu điểm cao nhất, giữ đúng thứ tự gốc -> đọc tự nhiên
 Mục đích: rút gọn content thô thành "summary" + "key_facts" để dùng làm

@@ -25,7 +25,7 @@ class T5Upload:
                 self.mongo = None
                 self.db = None
     def upload_rules(self, contents: list[dict], run_id: str):
-        """Đẩy bản ghi sạch từ T4 vào MongoDB collection biology_rules"""
+        """Đẩy bản ghi sạch từ T4 vào MongoDB collection world_rules"""
         logger.info("=" * 80)
         logger.info("📤 T5: UPLOAD MONGODB")
         logger.info("=" * 80)
@@ -99,7 +99,7 @@ class T5Upload:
 | **T4: Deduplicate** | Loại bỏ {stats.get("duplicates_removed", 0)} trùng lặp | 🟢 Hoàn tất |
 | **T5: DB Upload** | **Lưu mới {stats.get("rules_uploaded", 0)} quy luật** | 🚀 Đã lưu DB |
 
-> *Kiến trúc dữ liệu đã được tối ưu để tập trung cào các thông số Hóa Sinh Thay Thế (Alternative Biochemistry).*
+> *Pipeline không xây bách khoa toàn thư — nó cào nguyên liệu thô (summary + key_facts) cho một thế giới sự sống thông minh phi-carbon, để hệ thống LLM downstream dùng dựng nhân vật, môi trường và kịch bản.*
 """
         try:
             with open(summary_path, "a", encoding="utf-8") as f:

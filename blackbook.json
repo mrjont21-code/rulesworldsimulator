@@ -5,12 +5,12 @@
     "skill": "PLAYWRIGHT"
   },
   "www.reddit.com": {
-    "failures": 47,
+    "failures": 18,
     "status": "active",
     "skill": "HTTP"
   },
   "astronomy.stackexchange.com": {
-    "failures": 2,
+    "failures": 1,
     "status": "active",
     "skill": "HTTP"
   },
@@ -67,7 +67,7 @@
   "link.springer.com": {
     "failures": 0,
     "status": "active",
-    "skill": "PLAYWRIGHT"
+    "skill": "HTTP_SOUP"
   },
   "www.hou.usra.edu": {
     "failures": 0,
@@ -90,8 +90,8 @@
     "skill": "PLAYWRIGHT"
   },
   "www.liebertpub.com": {
-    "failures": 3,
-    "status": "banned",
+    "failures": 2,
+    "status": "active",
     "skill": "HTTP"
   },
   "www.agu.org": {
@@ -105,7 +105,7 @@
     "skill": "HTTP_SOUP"
   },
   "chemistry-europe.onlinelibrary.wiley.com": {
-    "failures": 2,
+    "failures": 1,
     "status": "active",
     "skill": "HTTP"
   },
@@ -115,12 +115,12 @@
     "skill": "PLAYWRIGHT"
   },
   "www.notulaebiologicae.ro": {
-    "failures": 4,
-    "status": "banned",
+    "failures": 2,
+    "status": "active",
     "skill": "HTTP"
   },
   "xenobiologymuseum.com": {
-    "failures": 2,
+    "failures": 1,
     "status": "active",
     "skill": "HTTP"
   },
@@ -140,7 +140,7 @@
     "skill": "PLAYWRIGHT"
   },
   "ocean.si.edu": {
-    "failures": 2,
+    "failures": 1,
     "status": "active",
     "skill": "HTTP"
   },
@@ -150,7 +150,7 @@
     "skill": "PLAYWRIGHT"
   },
   "medium.com": {
-    "failures": 1,
+    "failures": 0,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -170,9 +170,9 @@
     "skill": "HTTP_SOUP"
   },
   "newspaceeconomy.ca": {
-    "failures": 0,
+    "failures": 1,
     "status": "active",
-    "skill": "HTTP_SOUP"
+    "skill": "HTTP"
   },
   "www.sciencetimes.com": {
     "failures": 0,
@@ -220,7 +220,7 @@
     "skill": "PLAYWRIGHT"
   },
   "www.worldanvil.com": {
-    "failures": 1,
+    "failures": 0,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -235,7 +235,7 @@
     "skill": "PLAYWRIGHT"
   },
   "ntrs.nasa.gov": {
-    "failures": 0,
+    "failures": 1,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -250,8 +250,8 @@
     "skill": "PLAYWRIGHT"
   },
   "academic.oup.com": {
-    "failures": 3,
-    "status": "banned",
+    "failures": 1,
+    "status": "active",
     "skill": "HTTP"
   },
   "www.aimspress.com": {
@@ -260,12 +260,12 @@
     "skill": "HTTP_SOUP"
   },
   "www.lifescied.org": {
-    "failures": 2,
+    "failures": 1,
     "status": "active",
     "skill": "HTTP"
   },
   "www.journals.uchicago.edu": {
-    "failures": 2,
+    "failures": 1,
     "status": "active",
     "skill": "HTTP"
   },
@@ -300,7 +300,7 @@
     "skill": "HTTP_SOUP"
   },
   "phys.org": {
-    "failures": 1,
+    "failures": 0,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -335,7 +335,7 @@
     "skill": "HTTP"
   },
   "worldbuilding.stackexchange.com": {
-    "failures": 1,
+    "failures": 0,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -360,331 +360,11 @@
     "skill": "PLAYWRIGHT"
   },
   "hackerone.com": {
-    "failures": 1,
+    "failures": 0,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
   "memory-alpha.fandom.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "PLAYWRIGHT"
-  },
-  "speculativeevolution.fandom.com": {
-    "failures": 2,
-    "status": "active",
-    "skill": "HTTP"
-  },
-  "www.jamescambias.com": {
-    "failures": 1,
-    "status": "active",
-    "skill": "HTTP"
-  },
-  "forums.frontier.co.uk": {
-    "failures": 0,
-    "status": "active",
-    "skill": "PLAYWRIGHT"
-  },
-  "community.revolutionarygamesstudio.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "treknews.net": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "ui.adsabs.harvard.edu": {
-    "failures": 0,
-    "status": "active",
-    "skill": "PLAYWRIGHT"
-  },
-  "listverse.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "tnrtb.wordpress.com": {
-    "failures": 1,
-    "status": "active",
-    "skill": "HTTP"
-  },
-  "www.writingforums.org": {
-    "failures": 0,
-    "status": "active",
-    "skill": "PLAYWRIGHT"
-  },
-  "status.brave.app": {
-    "failures": 0,
-    "status": "active",
-    "skill": "PLAYWRIGHT"
-  },
-  "www.nature.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "PLAYWRIGHT"
-  },
-  "technology.nasa.gov": {
-    "failures": 1,
-    "status": "active",
-    "skill": "HTTP"
-  },
-  "www.mdpi.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "www.pnas.org": {
-    "failures": 1,
-    "status": "active",
-    "skill": "HTTP"
-  },
-  "journals.asm.org": {
-    "failures": 1,
-    "status": "active",
-    "skill": "HTTP"
-  },
-  "evsexplore.semantics.cancer.gov": {
-    "failures": 0,
-    "status": "active",
-    "skill": "PLAYWRIGHT"
-  },
-  "www.wikidata.org": {
-    "failures": 0,
-    "status": "active",
-    "skill": "PLAYWRIGHT"
-  },
-  "openalex.org": {
-    "failures": 1,
-    "status": "active",
-    "skill": "HTTP"
-  },
-  "amigo.geneontology.org": {
-    "failures": 0,
-    "status": "active",
-    "skill": "PLAYWRIGHT"
-  },
-  "answersingenesis.org": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "www.ck12.org": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "www.acs.org": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "bio.libretexts.org": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "agupubs.onlinelibrary.wiley.com": {
-    "failures": 1,
-    "status": "active",
-    "skill": "HTTP"
-  },
-  "chrome.google.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "www.numberanalytics.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "PLAYWRIGHT"
-  },
-  "socialecologies.wordpress.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "www.bbaw.de": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "grokipedia.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "www.cnet.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "bioscholars.in": {
-    "failures": 0,
-    "status": "active",
-    "skill": "PLAYWRIGHT"
-  },
-  "www.sf-encyclopedia.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "www.nationalgeographic.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "sarahs-world.blog": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "www.waterencyclopedia.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "www.whoi.edu": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "marine.rutgers.edu": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "www.britannica.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "PLAYWRIGHT"
-  },
-  "www.bbc.co.uk": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "www.quantamagazine.org": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "portlandpress.com": {
-    "failures": 1,
-    "status": "active",
-    "skill": "HTTP"
-  },
-  "www.smithsonianmag.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "unm-bioblog.blogspot.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "PLAYWRIGHT"
-  },
-  "www.sciencefocus.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "beta.capeia.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "news.arizona.edu": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "www.wionews.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP"
-  },
-  "www.therookies.co": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "marclee.io": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "specevo.jcink.net": {
-    "failures": 2,
-    "status": "active",
-    "skill": "HTTP"
-  },
-  "www.specevo.io": {
-    "failures": 1,
-    "status": "active",
-    "skill": "HTTP"
-  },
-  "www.monterrey.sciencegallery.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "www.tapatalk.com": {
-    "failures": 1,
-    "status": "active",
-    "skill": "HTTP"
-  },
-  "cos.gatech.edu": {
-    "failures": 0,
-    "status": "active",
-    "skill": "PLAYWRIGHT"
-  },
-  "www.darkenergybiosphere.org": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "www.nationalacademies.org": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "www.academia.edu": {
-    "failures": 0,
-    "status": "active",
-    "skill": "PLAYWRIGHT"
-  },
-  "nap.nationalacademies.org": {
-    "failures": 1,
-    "status": "active",
-    "skill": "HTTP"
-  },
-  "www.linkedin.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "sciedge.us": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "www.startmail.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "HTTP_SOUP"
-  },
-  "mastodon.social": {
-    "failures": 0,
-    "status": "active",
-    "skill": "PLAYWRIGHT"
-  },
-  "addons.mozilla.org": {
-    "failures": 1,
-    "status": "active",
-    "skill": "HTTP"
-  },
-  "microsoftedge.microsoft.com": {
     "failures": 0,
     "status": "active",
     "skill": "PLAYWRIGHT"

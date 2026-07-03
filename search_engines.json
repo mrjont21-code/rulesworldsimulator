@@ -41,11 +41,13 @@
     "khanacademy.org"
   ],
   "priority_sources": [
-    "wikipedia.org", "arxiv.org", "nasa.gov", "esa.int",
-    "nature.com", "science.org", "scientificamerican.com",
-    "space.com", "universetoday.com", "astrobio.net",
-    "phys.org", "sciencedaily.com", "researchgate.net",
-    "academia.edu", "fandom.com", "reddit.com",
-    "stackexchange.com", "scholar.google.com"
+    "orionsarm.com", "worldanvil.com", "projectperditus.com",
+    "spec-evo.fandom.com", "speculativeevolution.fandom.com",
+    "tvtropes.org", "mythcreants.com", "worldbuildingschool.com",
+    "projectrho.com", "fandom.com", "wikipedia.org", "reddit.com",
+    "stackexchange.com", "scientificamerican.com", "space.com",
+    "universetoday.com", "astrobio.net", "phys.org", "sciencedaily.com",
+    "arxiv.org", "nasa.gov", "esa.int", "nature.com", "science.org",
+    "researchgate.net", "academia.edu", "scholar.google.com"
   ]
 }

@@ -17,6 +17,7 @@ from playwright.sync_api import sync_playwright
 
 from config import settings
 from stealth import get_random_ua, human_delay
+from domain_ban import is_banned
 
 logger = logging.getLogger(__name__)
 
@@ -222,7 +223,7 @@ class T0Search:
 
                     if any(b in domain for b in banned_domains):
                         continue
-                    if self.blackbook.get(domain, {}).get("status") == "banned":
+                    if is_banned(self.blackbook, domain):
                         continue
                     if url in seen_urls:
                         continue
