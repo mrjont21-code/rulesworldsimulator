@@ -382,7 +382,7 @@
     "skill": "HTTP_SOUP"
   },
   "www.jamescambias.com": {
-    "failures": 0,
+    "failures": 1,
     "status": "active",
     "skill": "HTTP_SOUP"
   },
@@ -397,19 +397,19 @@
     "skill": "HTTP_SOUP"
   },
   "multispeciesworldbuilding.com": {
-    "failures": 1,
+    "failures": 2,
     "status": "active",
     "skill": "HTTP"
   },
   "www.adamasnemesis.com": {
-    "failures": 0,
+    "failures": 1,
     "status": "active",
     "skill": "HTTP_SOUP"
   },
   "allthetropes.org": {
-    "failures": 1,
+    "failures": 0,
     "status": "active",
-    "skill": "HTTP"
+    "skill": "HTTP_SOUP"
   },
   "hero.fandom.com": {
     "failures": 0,
@@ -422,12 +422,12 @@
     "skill": "PLAYWRIGHT"
   },
   "releasethatwitch.fandom.com": {
-    "failures": 1,
+    "failures": 2,
     "status": "active",
     "skill": "HTTP"
   },
   "scifi.stackexchange.com": {
-    "failures": 0,
+    "failures": 2,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -442,7 +442,7 @@
     "skill": "HTTP_SOUP"
   },
   "www.scribblehub.com": {
-    "failures": 0,
+    "failures": 1,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -482,7 +482,7 @@
     "skill": "PLAYWRIGHT"
   },
   "civilization.fandom.com": {
-    "failures": 1,
+    "failures": 2,
     "status": "active",
     "skill": "HTTP"
   },
@@ -507,9 +507,9 @@
     "skill": "HTTP_SOUP"
   },
   "www.aanda.org": {
-    "failures": 1,
+    "failures": 0,
     "status": "active",
-    "skill": "HTTP"
+    "skill": "HTTP_SOUP"
   },
   "futurism.com": {
     "failures": 0,
@@ -522,7 +522,7 @@
     "skill": "HTTP"
   },
   "www.forbes.com": {
-    "failures": 1,
+    "failures": 0,
     "status": "active",
     "skill": "HTTP"
   },
@@ -537,7 +537,7 @@
     "skill": "PLAYWRIGHT"
   },
   "creativesci-fi.fandom.com": {
-    "failures": 1,
+    "failures": 2,
     "status": "active",
     "skill": "HTTP"
   },
@@ -547,12 +547,12 @@
     "skill": "PLAYWRIGHT"
   },
   "captaintime.com": {
-    "failures": 1,
+    "failures": 0,
     "status": "active",
-    "skill": "HTTP"
+    "skill": "PLAYWRIGHT"
   },
   "politicalorders.substack.com": {
-    "failures": 1,
+    "failures": 2,
     "status": "active",
     "skill": "HTTP"
   },
@@ -567,7 +567,7 @@
     "skill": "PLAYWRIGHT"
   },
   "forums.spacebattles.com": {
-    "failures": 1,
+    "failures": 2,
     "status": "active",
     "skill": "HTTP"
   },
@@ -582,7 +582,7 @@
     "skill": "HTTP_SOUP"
   },
   "literarycompass.com": {
-    "failures": 1,
+    "failures": 2,
     "status": "active",
     "skill": "HTTP"
   },
@@ -607,7 +607,7 @@
     "skill": "HTTP_SOUP"
   },
   "www.architectsjournal.co.uk": {
-    "failures": 0,
+    "failures": 1,
     "status": "active",
     "skill": "HTTP_SOUP"
   },
@@ -653,7 +653,7 @@
     "skill": "PLAYWRIGHT"
   },
   "cosmobiota.substack.com": {
-    "failures": 1,
+    "failures": 2,
     "status": "active",
     "skill": "HTTP"
   },
@@ -683,7 +683,7 @@
     "skill": "PLAYWRIGHT"
   },
   "mitpress.mit.edu": {
-    "failures": 1,
+    "failures": 2,
     "status": "active",
     "skill": "HTTP"
   },
@@ -758,7 +758,7 @@
     "skill": "HTTP_SOUP"
   },
   "malcolmnicholson.wordpress.com": {
-    "failures": 0,
+    "failures": 1,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -768,7 +768,7 @@
     "skill": "HTTP_SOUP"
   },
   "selfawarepatterns.com": {
-    "failures": 0,
+    "failures": 1,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -813,9 +813,9 @@
     "skill": "HTTP_SOUP"
   },
   "astrapublishinghouse.com": {
-    "failures": 1,
+    "failures": 0,
     "status": "active",
-    "skill": "HTTP"
+    "skill": "PLAYWRIGHT"
   },
   "beta.thestorygraph.com": {
     "failures": 0,
@@ -833,7 +833,7 @@
     "skill": "HTTP_SOUP"
   },
   "www.fantasticfiction.com": {
-    "failures": 1,
+    "failures": 2,
     "status": "active",
     "skill": "HTTP"
   },
@@ -841,5 +841,25 @@
     "failures": 1,
     "status": "active",
     "skill": "HTTP"
+  },
+  "www.imagineforest.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "filmobsessive.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "davidjrodger.wordpress.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.e-ir.info": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
   }
 }

@@ -1,0 +1,37 @@
+{
+  "keyword": "alien civilization technology design",
+  "normalized": "alien_civilization_technology_design",
+  "total_links_found": 20,
+  "links_scraped": 4,
+  "scraped_urls": [
+    "https://www.quora.com/What-kinds-of-technology-could-a-advanced-alien-civilization-have",
+    "https://www.aanda.org/articles/aa/full_html/2020/07/aa37597-20/aa37597-20.html",
+    "https://www.forbes.com/sites/fernandezelizabeth/2020/06/21/scientists-move-to-find-alien-civilizations-using-technosignatures/",
+    "https://powerlisting.fandom.com/wiki/Alien_Technology"
+  ],
+  "found_urls": [
+    "https://www.quora.com/When-creating-an-alien-civilisation-which-do-you-design-first-biology-technology-or-culture",
+    "https://writings.stephenwolfram.com/2022/06/alien-intelligence-and-the-concept-of-technology/",
+    "https://www.scientificamerican.com/blog/observations/are-alien-civilizations-technologically-advanced/",
+    "https://www.quora.com/What-kinds-of-technology-could-a-advanced-alien-civilization-have",
+    "https://powerlisting.fandom.com/wiki/Alien_Technology",
+    "https://www.technologyreview.com/2021/02/23/1016772/extraterrestrial-engineering/",
+    "https://medium.com/@cabopappa/world-building-research-example-2-designing-aliens-and-technology-for-plot-f363a1eba704",
+    "https://en.wikipedia.org/wiki/Fermi_paradox",
+    "https://info.designatronics.com/blog/alien-civilizations-imagining-the-possibilities-and-characteristics-of-extraterrestrial-life",
+    "https://www.cambridge.org/core/journals/international-journal-of-astrobiology/article/alien-technology-conjunction-and-ergodicity/E9500F60A57E44945E4A26B857B6A468",
+    "https://civilization.fandom.com/wiki/Alien_Genetics_(CivBE)",
+    "https://www.aanda.org/articles/aa/full_html/2020/07/aa37597-20/aa37597-20.html",
+    "https://futurism.com/space/galaxy-aliens-fermi-nasa",
+    "https://www.popularmechanics.com/science/a62990282/post-biological-ai-aliens/",
+    "https://www.forbes.com/sites/fernandezelizabeth/2020/06/21/scientists-move-to-find-alien-civilizations-using-technosignatures/",
+    "https://www.space.com/lack-of-intelligent-aliens-universal-technological-development-limit",
+    "https://hackerone.com/brave",
+    "https://status.brave.app/",
+    "https://chrome.google.com/webstore/detail/startpage-%E2%80%94-private-searc/fgmjlmbojbkmdpofahffgcpkhkngfpef",
+    "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light"
+  ],
+  "last_run": "2026-07-04T04:55:25.233368+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}

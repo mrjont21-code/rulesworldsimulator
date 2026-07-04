@@ -1,0 +1,33 @@
+{
+  "keyword": "alien diplomacy war conflict fiction",
+  "normalized": "alien_diplomacy_war_conflict_fiction",
+  "total_links_found": 19,
+  "links_scraped": 1,
+  "scraped_urls": [
+    "https://www.e-ir.info/2024/06/10/alien-no-more-the-promise-of-popular-culture-for-the-study-of-diplomacy/"
+  ],
+  "found_urls": [
+    "https://scifi.stackexchange.com/questions/297622/looking-for-a-book-about-a-human-being-recruited-to-be-a-diplomat-to-prevent-int",
+    "https://www.goodreads.com/book/show/11995902-alien-diplomacy",
+    "https://www.goodreads.com/author/show/3219496.Gini_Koch",
+    "https://www.quora.com/Did-anyone-ever-write-a-science-fiction-novel-where-an-alien-civilization-initiates-the-first-contact-to-recruit-us-and-our-war-industry-as-mercenaries-to-fight-in-their-galactic-war",
+    "https://beta.thestorygraph.com/book_reviews/380bcb2b-b9b1-4433-a3c6-ea8b884f4a05",
+    "https://astrapublishinghouse.com/product/alien-diplomacy-9781101579916/",
+    "https://en.wikipedia.org/wiki/Diplomatic_Act",
+    "https://www.goodreads.com/list/show/77675.Alien_Diplomacy_and_Interspecies_Friendship",
+    "https://www.barnesandnoble.com/w/alien-diplomacy-gini-koch/1102497723",
+    "https://www.libraryjournal.com/review/alien-diplomacy",
+    "https://www.quora.com/What-fantasy-or-science-fiction-stories-have-a-strong-emphasis-on-diplomacy",
+    "https://www.foreignaffairsreview.com/home/aliens-diplomacy-and-the-threat-of-the-dark-forest",
+    "https://www.fantasticfiction.com/k/gini-koch/alien-diplomacy.htm",
+    "https://www.e-ir.info/2024/06/10/alien-no-more-the-promise-of-popular-culture-for-the-study-of-diplomacy/",
+    "https://hackerone.com/brave",
+    "https://status.brave.app/",
+    "https://microsoftedge.microsoft.com/addons/detail/startpage-%E2%80%94-private-searc/jogphcaagccljpbnoddeknjjngefidmm",
+    "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light",
+    "https://mastodon.social/@StartpageSearch"
+  ],
+  "last_run": "2026-07-04T06:36:03.709206+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}
