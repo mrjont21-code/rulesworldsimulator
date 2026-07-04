@@ -38,40 +38,37 @@ jobs:
           system_dbs = ["admin", "config", "local"]
 
           # 2. Các Database cốt lõi của bạn (Được bảo vệ để không mất cấu hình game/thế giới)
-          # Nếu bạn muốn xóa TẤT CẢ không chừa thứ gì, hãy để trống mảng này: protected_dbs = []
           protected_dbs = ["chimera_permanent", "sample_mflix"]
 
           try:
               db_names = client.list_database_names()
           except Exception as e:
               print(f"⚠️ Không có quyền quét toàn bộ Cluster: {e}")
-              print("Tiến hành xóa đích danh các Database rác thường gặp...")
+              print("Tiến hành kiểm tra các Database thông dụng...")
               db_names = ["world_lore_db", "rulesworld", "chimera_purgatory", "chimera_canon", "test"]
 
           deleted_count = 0
+          target_collection = "human_comedy_tropes"
 
-          # 3. Tiến hành càn quét
+          # 3. Tiến hành càn quét tập trung vào collection gây lỗi E11000
           for db_name in db_names:
               if db_name in system_dbs or db_name in protected_dbs:
-                  print(f"🛡️ Bỏ qua Database được bảo vệ: [{db_name}]")
                   continue
 
-              print(f"\n🗑️ Đang truy cập Database: [{db_name}]...")
               db = client[db_name]
               
               try:
                   collections = db.list_collection_names()
-                  if not collections:
-                      print("   - Database trống.")
-                      continue
-                      
-                  for coll in collections:
-                      db.drop_collection(coll)
+                  if target_collection in collections:
+                      print(f"\n🗑️ Đang truy cập Database: [{db_name}]...")
+                      db.drop_collection(target_collection)
                       deleted_count += 1
-                      print(f"   💥 Đã xóa sạch bảng: {coll}")
+                      print(f"   💥 Đã xóa sạch bảng: {target_collection} để dọn đường tạo Unique Index.")
               except Exception as e:
                   print(f"   ❌ Lỗi khi dọn dẹp {db_name}: {e}")
 
-          print(f"\n✅ HOÀN TẤT! Đã dọn dẹp thành công {deleted_count} bảng (collection) rác.")
+          if deleted_count == 0:
+              print(f"\nℹ️ Không tìm thấy bảng {target_collection} nào bị trùng lặp. Database đã sạch.")
+          else:
+              print(f"\n✅ HOÀN TẤT! Đã dọn dẹp thành công {deleted_count} bảng rác.")
           '
-
