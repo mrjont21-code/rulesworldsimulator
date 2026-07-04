@@ -19,6 +19,7 @@ from t3_normalize import run_t3
 from t4_deduplicate import run_t4
 from t5_upload import run_t5
 from stealth import keyword_break, human_delay
+from mongo_shared import close_shared_client
 
 MAX_LOOPS = int(os.getenv("MAX_LOOPS", "8"))
 
@@ -111,7 +112,8 @@ def run_pomodoro_loop():
                 "links_scraped": 0,
                 "contents_validated": 0,
                 "duplicates_removed": 0,
-                "rules_uploaded": 0
+                "rules_uploaded": 0,
+                "rules_attempted": 0
             }
             
             # XỬ LÝ TUẦN TỰ TỪNG KEYWORD
@@ -175,7 +177,8 @@ def run_single_session():
     stats = {
         "started_at": datetime.now(timezone.utc).isoformat(),
         "keywords_used": [], "links_found": 0, "links_scraped": 0,
-        "contents_validated": 0, "duplicates_removed": 0, "rules_uploaded": 0
+        "contents_validated": 0, "duplicates_removed": 0, "rules_uploaded": 0,
+        "rules_attempted": 0
     }
     
     process_single_keyword(keywords, run_id, stats)
@@ -188,8 +191,14 @@ if __name__ == "__main__":
     parser.add_argument("--loop", action="store_true", help="Chạy loop Pomodoro")
     parser.add_argument("--once", action="store_true", help="Chạy 1 keyword (test)")
     args = parser.parse_args()
-    
-    if args.loop:
-        run_pomodoro_loop()
-    else:
-        run_single_session()
+
+    # BUG-3 fix: đảm bảo MongoClient dùng chung (mongo_shared.py) luôn
+    # được đóng khi tiến trình kết thúc — chạy dù --loop hay --once, dù
+    # thành công hay có exception bay ra giữa chừng.
+    try:
+        if args.loop:
+            run_pomodoro_loop()
+        else:
+            run_single_session()
+    finally:
+        close_shared_client()

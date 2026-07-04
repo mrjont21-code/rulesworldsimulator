@@ -7,32 +7,18 @@ import os
 import json
 import logging
 from config import settings
+from mongo_shared import get_shared_db, get_existing_hashes
 
 logger = logging.getLogger(__name__)
 
 class T4Deduplicate:
     def __init__(self):
-        self.mongo = None
-        self.db = None
-        self.existing_hashes = set()
-        
-        if settings.MONGODB_URI:
-            try:
-                from pymongo import MongoClient
-                self.mongo = MongoClient(settings.MONGODB_URI, serverSelectionTimeoutMS=5000)
-                self.mongo.admin.command('ping')
-                self.db = self.mongo[settings.MONGODB_DB_NAME]
-                
-                # Nạp toàn bộ content_hash đã tồn tại từ Collection lưu Luật Hóa Sinh
-                for doc in self.db[settings.MONGODB_COLLECTION_RULES].find({}, {"content_hash": 1}):
-                    if "content_hash" in doc:
-                        self.existing_hashes.add(doc["content_hash"])
-                
-                logger.info(f"✅ MongoDB connected, loaded {len(self.existing_hashes)} existing hashes from DB.")
-            except Exception as e:
-                logger.warning(f"⚠️ MongoDB connection failed in T4: {e}")
-                self.mongo = None
-                self.db = None
+        # BUG-3 fix: dùng client + cache hash DÙNG CHUNG cho toàn tiến
+        # trình (mongo_shared.py) thay vì mở MongoClient riêng và quét lại
+        # toàn bộ collection `world_rules` mỗi lần T4Deduplicate được khởi
+        # tạo (main.py khởi tạo lại class này cho MỖI keyword).
+        self.db = get_shared_db()
+        self.existing_hashes = get_existing_hashes()
 
     def check_duplicates(self, normalized_data: list[dict]) -> list[dict]:
         """Lọc ra các bản ghi mới (chưa có trong DB)"""

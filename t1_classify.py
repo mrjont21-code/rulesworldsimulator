@@ -1,7 +1,12 @@
 """
-T1: CLASSIFY LINKS - Phân loại links với extended sources
-Pattern Tinnhanh + Rulesworld sources
-Yêu cầu 100% file chỉnh sửa là file code đầy đủ
+T1: CLASSIFY LINKS — Foundational Knowledge Engine
+====================================================
+Phân loại URL theo bảng ưu tiên nguồn khoa học. Thang ưu tiên phản ánh
+đúng mục tiêu hệ thống: thu thập quy luật nhân quả khách quan từ tài liệu
+học thuật, sau đó bổ sung bằng nguồn bách khoa và tin tức khoa học.
+Tài liệu hư cấu/tham khảo ý tưởng được giữ lại ở mức ưu tiên thấp nhất —
+engine downstream (T4/T5) sẽ từ chối tạo Rule Object từ nhãn này trừ khi
+có cờ human_review_required = true.
 """
 import re
 import logging
@@ -12,135 +17,143 @@ logger = logging.getLogger(__name__)
 
 class T1Classify:
     def __init__(self):
-        # Bảng ưu tiên nguồn — đảo ngược so với thiết kế "nhà khoa học" cũ.
-        # Pipeline này không xây bách khoa toàn thư, nó xây kho vũ khí thị
-        # giác và drama cho kịch bản. Các trang thiết kế giả tưởng/tropes đã
-        # có sẵn văn phong kịch tính, hệ sinh thái phân tầng giai cấp, kẻ đi
-        # săn/mồi nguy hiểm — đốt cháy xung đột cho kịch bản. Academic/gov
-        # viết quá trung lập, khô khan -> hạ xuống hàng thứ yếu (tư liệu tham
-        # chiếu khi cần một cơ chế vật lý cụ thể, không phải nguồn chính).
+        # =====================================================================
+        # DOMAIN RULES — thứ tự ưu tiên tăng dần (1 = cao nhất, 6 = thấp nhất)
+        # =====================================================================
         self.domain_rules = {
-            # Worldbuilding / Speculative fiction / Tropes - TOP priority.
-            # Đây là nguồn chất liệu chính: nguyên mẫu sinh vật, cơ chế di
-            # chuyển/chiến đấu/cái chết, xã hội hư cấu ngoài carbon.
-            "orionsarm.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
-            "worldanvil.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
-            "projectperditus.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
-            "spec-evo.fandom.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
-            "speculativeevolution.fandom.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
-            "amphiterra.weebly.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
-            "tvtropes.org": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
-            "mythcreants.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
-            "worldbuildingschool.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
-            "projectrho.com": {"label": "worldbuilding_fiction", "scraper_type": "html_simple", "priority": 1},
 
-            # Wikipedia - vẫn cao vì cung cấp luật nền vật lý/sinh học đáng
-            # tin cậy để "neo" các cơ chế giả tưởng, nhưng không còn số 1 mặc
-            # định như academic paper trước đây.
-            "wikipedia.org": {"label": "wiki_article", "scraper_type": "html_simple", "priority": 2},
+            # --- Priority 1: Khoa học nền tảng ---
+            # Ontology cốt lõi: Matter, Energy, Space, Time, Biology, Evolution.
+            # Đây là nguồn Rule Object chính — mọi quy luật nhân quả lấy từ
+            # đây được coi là đáng tin cậy để đưa vào Knowledge Graph.
+            "nature.com":              {"label": "physics_biology_rule_source", "scraper_type": "html_simple", "priority": 1},
+            "science.org":             {"label": "physics_biology_rule_source", "scraper_type": "html_simple", "priority": 1},
+            "arxiv.org":               {"label": "physics_biology_rule_source", "scraper_type": "html_simple", "priority": 1},
+            "nasa.gov":                {"label": "astronomy_rule_source",       "scraper_type": "html_simple", "priority": 1},
+            "esa.int":                 {"label": "astronomy_rule_source",       "scraper_type": "html_simple", "priority": 1},
+            "jaxa.jp":                 {"label": "astronomy_rule_source",       "scraper_type": "html_simple", "priority": 1},
+            "ncbi.nlm.nih.gov":        {"label": "biology_rule_source",         "scraper_type": "html_simple", "priority": 1},
+            "pubmed.ncbi.nlm.nih.gov": {"label": "biology_rule_source",         "scraper_type": "html_simple", "priority": 1},
+            "plos.org":                {"label": "biology_rule_source",         "scraper_type": "html_simple", "priority": 1},
 
-            # Community/Discussion - nguồn ý tưởng sáng tạo, giọng văn tự
-            # nhiên, giàu tính kịch (r/worldbuilding, r/speculativeevolution).
-            "reddit.com": {"label": "community_discussion", "scraper_type": "reddit", "priority": 2},
+            # --- Priority 2: Khoa học hệ thống / xã hội / nhận thức ---
+            # Ontology: Society, Cooperation, Conflict, Intelligence, Information.
+            # Bao gồm Game Theory, Network Theory, Systems Theory, Sociology —
+            # cung cấp quy luật hành vi tập thể và cấu trúc vận động xã hội.
+            "quantamagazine.org":      {"label": "science_secondary_source",    "scraper_type": "html_simple", "priority": 2},
+            "sciencedaily.com":        {"label": "science_secondary_source",    "scraper_type": "html_simple", "priority": 2},
+            "phys.org":                {"label": "science_secondary_source",    "scraper_type": "html_simple", "priority": 2},
+            "astrobio.net":            {"label": "science_secondary_source",    "scraper_type": "html_simple", "priority": 2},
+            "researchgate.net":        {"label": "academic_paper",              "scraper_type": "html_simple", "priority": 2},
+            "academia.edu":            {"label": "academic_paper",              "scraper_type": "html_simple", "priority": 2},
+            "scholar.google.com":      {"label": "academic_paper",              "scraper_type": "html_simple", "priority": 2},
+            "springer.com":            {"label": "academic_paper",              "scraper_type": "html_simple", "priority": 2},
+            "wiley.com":               {"label": "academic_paper",              "scraper_type": "html_simple", "priority": 2},
+            "elsevier.com":            {"label": "academic_paper",              "scraper_type": "html_simple", "priority": 2},
+            "doi.org":                 {"label": "academic_paper",              "scraper_type": "html_simple", "priority": 2},
+            "santafe.edu":             {"label": "systems_theory_rule_source",  "scraper_type": "html_simple", "priority": 2},
+            "pnas.org":                {"label": "systems_theory_rule_source",  "scraper_type": "html_simple", "priority": 2},
+            "cell.com":                {"label": "biology_rule_source",         "scraper_type": "html_simple", "priority": 2},
+            "frontiersin.org":         {"label": "systems_theory_rule_source",  "scraper_type": "html_simple", "priority": 2},
 
-            # Wiki/Fandom generic - nâng từ 5 lên 2 vì phần lớn traffic vẫn là
-            # fandom khoa học viễn tưởng/quái vật hữu ích cho concept art, chỉ
-            # còn hạ nhẹ so với worldbuilding chuyên biệt ở trên.
-            "fandom.com": {"label": "wiki_fandom", "scraper_type": "html_simple", "priority": 2},
-            "wikia.com": {"label": "wiki_fandom", "scraper_type": "html_simple", "priority": 2},
-            "wikidot.com": {"label": "wiki_fandom", "scraper_type": "html_simple", "priority": 2},
-            "stackexchange.com": {"label": "community_discussion", "scraper_type": "html_simple", "priority": 3},
-            "quora.com": {"label": "community_discussion", "scraper_type": "html_simple", "priority": 3},
+            # --- Priority 3: Bách khoa toàn thư (định nghĩa gốc / neo khái niệm) ---
+            # Wikipedia giữ vai trò xác định ranh giới định nghĩa chuẩn của
+            # khái niệm khoa học — không dùng làm nguồn Rule Object chính.
+            "wikipedia.org":           {"label": "encyclopedic_reference",      "scraper_type": "html_simple", "priority": 3},
 
-            # Science News/Magazines - hạ xuống priority 3: vẫn hữu ích để
-            # "vay mượn" một hiệu ứng thị giác/cơ chế môi trường cụ thể, nhưng
-            # không còn là nguồn ưu tiên hàng đầu.
-            "scientificamerican.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 3},
-            "space.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 3},
-            "universetoday.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 3},
-            "astrobio.net": {"label": "science_news", "scraper_type": "html_simple", "priority": 3},
-            "phys.org": {"label": "science_news", "scraper_type": "html_simple", "priority": 3},
-            "sciencedaily.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 3},
-            "newscientist.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 3},
-            "quantamagazine.org": {"label": "science_news", "scraper_type": "html_simple", "priority": 3},
-            "wired.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 3},
-            "theverge.com": {"label": "science_news", "scraper_type": "html_simple", "priority": 3},
+            # --- Priority 4: Tin tức khoa học phổ thông ---
+            # Hữu ích để bắt xu hướng nghiên cứu mới, nhưng thiếu độ chính xác
+            # học thuật. Chỉ dùng khi không tìm được nguồn Priority 1–2.
+            "scientificamerican.com":  {"label": "science_news",                "scraper_type": "html_simple", "priority": 4},
+            "space.com":               {"label": "science_news",                "scraper_type": "html_simple", "priority": 4},
+            "universetoday.com":       {"label": "science_news",                "scraper_type": "html_simple", "priority": 4},
+            "newscientist.com":        {"label": "science_news",                "scraper_type": "html_simple", "priority": 4},
+            "wired.com":               {"label": "science_news",                "scraper_type": "html_simple", "priority": 4},
+            "theverge.com":            {"label": "science_news",                "scraper_type": "html_simple", "priority": 4},
 
-            # Academic/Research - hạ xuống thấp nhất trong nhóm có nhãn riêng.
-            # Văn phong quá trung lập/khô khan để LLM học cách viết kịch tính,
-            # nhưng vẫn giữ lại làm tư liệu đối chiếu khi cần độ chính xác.
-            "arxiv.org": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
-            "nature.com": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
-            "science.org": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
-            "ncbi.nlm.nih.gov": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
-            "pubmed.ncbi.nlm.nih.gov": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
-            "researchgate.net": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
-            "academia.edu": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
-            "scholar.google.com": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
-            "doi.org": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
-            "springer.com": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
-            "wiley.com": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
-            "elsevier.com": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
-            "plos.org": {"label": "academic_paper", "scraper_type": "html_simple", "priority": 4},
+            # --- Priority 5: Cộng đồng thảo luận ---
+            # Chỉ dùng để phát hiện chủ đề / câu hỏi đang được giới nghiên
+            # cứu quan tâm. KHÔNG tạo Rule Object trực tiếp từ nguồn này.
+            "reddit.com":              {"label": "community_discussion",        "scraper_type": "reddit",      "priority": 5},
+            "stackexchange.com":       {"label": "community_discussion",        "scraper_type": "html_simple", "priority": 5},
+            "quora.com":               {"label": "community_discussion",        "scraper_type": "html_simple", "priority": 5},
 
-            # Government/Space Agencies - thấp nhất. Văn phong báo cáo chính
-            # thức gần như không có giá trị kịch tính trực tiếp.
-            "nasa.gov": {"label": "government_research", "scraper_type": "html_simple", "priority": 5},
-            "esa.int": {"label": "government_research", "scraper_type": "html_simple", "priority": 5},
-            "jaxa.jp": {"label": "government_research", "scraper_type": "html_simple", "priority": 5},
+            # --- Priority 6: Hư cấu / Tham khảo ý tưởng (THẤP NHẤT, KHÔNG NÂNG) ---
+            # Các nguồn này chỉ được dùng để tham khảo ý tưởng đặt câu hỏi
+            # nghiên cứu, KHÔNG BAO GIỜ là nguồn cho Rule Object.
+            # Engine T4/T5 phải từ chối xử lý nhãn "fiction_reference_only"
+            # trừ khi được gắn cờ human_review_required = true.
+            "orionsarm.com":                  {"label": "fiction_reference_only", "scraper_type": "html_simple", "priority": 6},
+            "worldanvil.com":                 {"label": "fiction_reference_only", "scraper_type": "html_simple", "priority": 6},
+            "projectperditus.com":            {"label": "fiction_reference_only", "scraper_type": "html_simple", "priority": 6},
+            "spec-evo.fandom.com":            {"label": "fiction_reference_only", "scraper_type": "html_simple", "priority": 6},
+            "speculativeevolution.fandom.com": {"label": "fiction_reference_only", "scraper_type": "html_simple", "priority": 6},
+            "amphiterra.weebly.com":          {"label": "fiction_reference_only", "scraper_type": "html_simple", "priority": 6},
+            "tvtropes.org":                   {"label": "fiction_reference_only", "scraper_type": "html_simple", "priority": 6},
+            "mythcreants.com":                {"label": "fiction_reference_only", "scraper_type": "html_simple", "priority": 6},
+            "worldbuildingschool.com":        {"label": "fiction_reference_only", "scraper_type": "html_simple", "priority": 6},
+            "projectrho.com":                 {"label": "fiction_reference_only", "scraper_type": "html_simple", "priority": 6},
+            "fandom.com":                     {"label": "fiction_reference_only", "scraper_type": "html_simple", "priority": 6},
+            "wikia.com":                      {"label": "fiction_reference_only", "scraper_type": "html_simple", "priority": 6},
+            "wikidot.com":                    {"label": "fiction_reference_only", "scraper_type": "html_simple", "priority": 6},
         }
 
-        # Path-based rules (đồng bộ thang ưu tiên mới: worldbuilding/tropes=1,
-        # wiki/community=2, science news=3, academic=4)
+        # =====================================================================
+        # PATH RULES — ưu tiên theo loại nội dung, không theo nguồn cụ thể
+        # =====================================================================
+        # Priority 1: đường dẫn chỉ rõ tài liệu học thuật
+        # Priority 2: PDF (loại file, độc lập với độ ưu tiên nội dung —
+        #             cần scraper riêng, không mix vào HTML pipeline)
+        # Priority 3: bách khoa / tin tức / blog trung tính
+        # Priority 6: lore / world — tham khảo ý tưởng, không phải Rule source
         self.path_rules = [
-            (r"/wiki/|/species/|/lore/|/world/", "worldbuilding_fiction", "html_simple", 1),
-            (r"\.pdf$", "pdf_document", "pdf", 2),
-            (r"/blog/", "blog_article", "html_simple", 2),
-            (r"/article/", "blog_article", "html_simple", 2),
-            (r"/news/", "science_news", "html_simple", 3),
-            (r"/research/", "academic_paper", "html_simple", 4),
-            (r"/paper/", "academic_paper", "html_simple", 4),
-            (r"/publication/", "academic_paper", "html_simple", 4),
+            (r"/research/|/paper/|/publication/|/study/",  "academic_paper",       "html_simple", 1),
+            (r"\.pdf$",                                    "pdf_document",         "pdf",         2),
+            (r"/news/",                                    "science_news",         "html_simple", 3),
+            (r"/blog/|/article/",                          "blog_article",         "html_simple", 3),
+            (r"/wiki/",                                    "encyclopedic_reference","html_simple", 3),
+            (r"/lore/|/world/",                            "fiction_reference_only","html_simple", 6),
         ]
 
     def classify_link(self, url: str) -> dict:
-        """Phân loại link dựa trên URL và domain"""
+        """Phân loại một URL theo thang ưu tiên khoa học."""
         parsed = urlparse(url)
         domain = parsed.netloc.lower()
         path = parsed.path.lower()
 
-        # Check domain rules first
+        # Ưu tiên kiểm tra domain trước (độ chính xác cao hơn path)
         for domain_pattern, rule in self.domain_rules.items():
             if domain_pattern in domain:
                 return {
                     "label": rule["label"],
                     "scraper_type": rule["scraper_type"],
                     "priority": rule["priority"],
-                    "domain": domain
+                    "domain": domain,
                 }
 
-        # Check path rules
+        # Kiểm tra path nếu domain không khớp
         for pattern, label, scraper_type, priority in self.path_rules:
             if re.search(pattern, path):
                 return {
                     "label": label,
                     "scraper_type": scraper_type,
                     "priority": priority,
-                    "domain": domain
+                    "domain": domain,
                 }
 
-        # Default
+        # Fallback: priority 5 (không xác định — thấp hơn science_news,
+        # cao hơn fiction_reference_only, không nên chiếm slot ưu tiên cao)
         return {
             "label": "general_article",
             "scraper_type": "html_simple",
-            "priority": 4,
-            "domain": domain
+            "priority": 5,
+            "domain": domain,
         }
 
     def classify_links(self, links: list[dict]) -> list[dict]:
-        """Phân loại tất cả links"""
+        """Phân loại tất cả links và sắp xếp theo thang ưu tiên."""
         logger.info("=" * 80)
-        logger.info("🏷️  T1: CLASSIFY LINKS")
+        logger.info("🏷️  T1: CLASSIFY LINKS — Knowledge Source Prioritization")
         logger.info("=" * 80)
 
         classified = []
@@ -149,28 +162,45 @@ class T1Classify:
             link.update(classification)
             classified.append(link)
 
-            # Log ngắn gọn
-            priority_icon = {1: "🔴", 2: "🟡", 3: "🟢", 4: "⚪", 5: "⚫"}.get(classification["priority"], "⚪")
-            logger.info(f"   {priority_icon} {link['domain'][:30]:<30} → {classification['label']}")
+            priority_icon = {
+                1: "🔵",  # Khoa học nền tảng
+                2: "🟢",  # Academic / hệ thống
+                3: "🟡",  # Bách khoa / tin tức
+                4: "🟠",  # Tin tức phổ thông
+                5: "⚪",  # Cộng đồng / không xác định
+                6: "🔴",  # Tham khảo hư cấu — không tạo Rule Object
+            }.get(classification["priority"], "⚪")
 
-        # Sắp xếp theo priority (1 = cao nhất)
+            logger.info(
+                f"   {priority_icon} [{classification['priority']}] "
+                f"{link['domain'][:35]:<35} → {classification['label']}"
+            )
+
+        # Sắp xếp theo priority tăng dần (1 = cao nhất xử lý trước)
         classified.sort(key=lambda x: x["priority"])
 
-        # Thống kê
-        labels = {}
+        # Thống kê phân phối nhãn
+        label_counts: dict[str, int] = {}
         for link in classified:
-            label = link["label"]
-            labels[label] = labels.get(label, 0) + 1
+            lbl = link["label"]
+            label_counts[lbl] = label_counts.get(lbl, 0) + 1
 
-        logger.info(f"\n📊 Thống kê:")
-        for label, count in sorted(labels.items(), key=lambda x: -x[1]):
+        logger.info("\n📊 Phân phối nhãn nguồn:")
+        for label, count in sorted(label_counts.items(), key=lambda x: -x[1]):
             logger.info(f"   {label}: {count}")
+
+        fiction_count = label_counts.get("fiction_reference_only", 0)
+        if fiction_count > 0:
+            logger.info(
+                f"\n⚠️  {fiction_count} link(s) có nhãn 'fiction_reference_only' — "
+                f"T4/T5 sẽ từ chối tạo Rule Object từ các nguồn này."
+            )
 
         return classified
 
 
 def run_t1(links: list[dict]) -> list[dict]:
-    """Entry point cho T1"""
+    """Entry point cho T1."""
     classifier = T1Classify()
     return classifier.classify_links(links)
 
@@ -178,18 +208,56 @@ def run_t1(links: list[dict]) -> list[dict]:
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.INFO,
-        format='%(asctime)s - [T1] %(message)s',
-        datefmt='%H:%M:%S'
+        format="%(asctime)s - [T1] %(message)s",
+        datefmt="%H:%M:%S",
     )
 
-    # Test
+    # === Kiểm tra thang ưu tiên mới ===
     test_links = [
+        # Priority 1 — phải lên đầu
         {"url": "https://arxiv.org/abs/2301.12345"},
+        {"url": "https://www.nature.com/articles/s41586-023-00001-x"},
+        {"url": "https://www.nasa.gov/mission/artemis/"},
+        {"url": "https://pubmed.ncbi.nlm.nih.gov/12345678/"},
+        # Priority 2
+        {"url": "https://www.quantamagazine.org/evolution-article-2024"},
+        {"url": "https://www.santafe.edu/research/complexity"},
+        # Priority 3
         {"url": "https://en.wikipedia.org/wiki/Astrobiology"},
+        # Priority 4
+        {"url": "https://www.scientificamerican.com/article/some-topic"},
+        # Priority 5
+        {"url": "https://www.reddit.com/r/biology/comments/xyz"},
+        # Priority 6 — phải xuống đáy
         {"url": "https://speculativeevolution.fandom.com/wiki/Aerosaur"},
-        {"url": "https://www.nasa.gov/mission/"},
-        {"url": "https://example.com/random-page"},
+        {"url": "https://www.worldanvil.com/w/some-world"},
+        {"url": "https://tvtropes.org/pmwiki/pmwiki.php/Main/SomeTrope"},
+        # Path rules
+        {"url": "https://example.com/research/paper-on-systems"},
+        {"url": "https://example.com/lore/history-of-faction"},
     ]
 
     classified = run_t1(test_links)
-    print(f"\n✅ Classified {len(classified)} links")
+
+    print("\n" + "=" * 60)
+    print("KIỂM TRA KẾT QUẢ PHÂN LOẠI:")
+    print("=" * 60)
+    for link in classified:
+        p = link["priority"]
+        expected_ok = True
+        # Xác nhận các trường hợp quan trọng
+        if "arxiv.org" in link["url"] and p != 1:
+            expected_ok = False
+        if "fandom.com" in link["url"] and p != 6:
+            expected_ok = False
+        if "worldanvil.com" in link["url"] and p != 6:
+            expected_ok = False
+        if "tvtropes.org" in link["url"] and p != 6:
+            expected_ok = False
+        if "nasa.gov" in link["url"] and p != 1:
+            expected_ok = False
+
+        status = "✅" if expected_ok else "❌ PRIORITY SAI"
+        print(f"   {status} [{p}] {link['label']:<35} {link['url'][:55]}")
+
+    print(f"\n✅ Đã phân loại {len(classified)} links")

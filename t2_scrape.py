@@ -1,8 +1,12 @@
 """
-T2: SCRAPE - Anti-Ban Mode
-- curl_cffi cho HTTP
-- Delay 8-20s mỗi link
-- Playwright chỉ dùng khi HTTP thất bại
+T2: SCRAPE — Anti-Ban Mode / Foundational Knowledge Engine
+===========================================================
+- curl_cffi cho HTTP request ngụy trang (fallback httpx)
+- Delay 8–20s mỗi request để tránh bị ban
+- Playwright chỉ kích hoạt khi HTTP thất bại
+- Content quality gate: lọc theo SCIENCE_ONTOLOGY_KEYWORDS thay vì
+  từ khóa kịch tính cũ — đảm bảo chỉ nội dung có liên quan đến quy
+  luật khoa học/nhân quả mới đi qua được T3.
 """
 import os
 import json
@@ -36,16 +40,16 @@ class T2Scrape:
     def _load_blackbook(self) -> dict:
         path = settings.BLACKBOOK_FILE
         if os.path.exists(path):
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, "r", encoding="utf-8") as f:
                 return json.load(f)
         return {}
 
     def _save_blackbook(self):
-        with open(settings.BLACKBOOK_FILE, 'w', encoding='utf-8') as f:
+        with open(settings.BLACKBOOK_FILE, "w", encoding="utf-8") as f:
             json.dump(self.blackbook, f, indent=2, ensure_ascii=False)
 
     def _create_session(self):
-        """Tạo session mới với headers ngụy trang"""
+        """Tạo HTTP session mới với headers ngụy trang trình duyệt thật."""
         headers = get_stealth_headers()
         if HAS_CFFI:
             return cffi_requests.Session(impersonate="chrome120", headers=headers)
@@ -60,22 +64,26 @@ class T2Scrape:
             self._playwright = sync_playwright().start()
             self._browser = self._playwright.chromium.launch(
                 headless=True,
-                args=["--disable-blink-features=AutomationControlled", "--no-sandbox"]
+                args=["--disable-blink-features=AutomationControlled", "--no-sandbox"],
             )
             self._context = self._browser.new_context(
                 user_agent=get_stealth_headers()["User-Agent"]
             )
         except Exception as e:
-            logger.warning(f"Playwright init failed: {e}")
+            logger.warning(f"Playwright init thất bại: {e}")
             self._context = None
 
     def _close_playwright(self):
-        if self._context: self._context.close()
-        if self._browser: self._browser.close()
-        if self._playwright: self._playwright.stop()
+        if self._context:
+            self._context.close()
+        if self._browser:
+            self._browser.close()
+        if self._playwright:
+            self._playwright.stop()
         self._context = None
 
     def is_valid_content(self, text: str) -> bool:
+        """Kiểm tra nội dung không phải trang chặn/captcha."""
         if not text or len(text) < 150:
             return False
         traps = [
@@ -88,65 +96,69 @@ class T2Scrape:
         return not any(t in text.lower() for t in traps)
 
     def _scrape_http(self, url: str) -> tuple[str | None, str]:
-        """Skill 1: HTTP với curl_cffi/httpx"""
+        """Skill 1: HTTP với curl_cffi/httpx và HTML parsing đa tầng."""
         session = self._create_session()
         try:
             resp = session.get(url, timeout=15.0)
             html_text = resp.text
-            
-            # Sub-skill: SPA JSON
+
+            # Sub-skill: SPA JSON (ưu tiên vì thường sạch hơn HTML soup)
             spa_text = extract_spa_json_data(html_text)
             if spa_text and self.is_valid_content(spa_text):
                 return spa_text[:8000], "SPA_JSON"
-            
-            # Sub-skill: HTML parsing
-            soup = BeautifulSoup(html_text, 'lxml')
+
+            # Sub-skill: HTML parsing theo selector ưu tiên
+            soup = BeautifulSoup(html_text, "lxml")
             for tag in soup.find_all(["script", "style", "nav", "footer", "header", "aside"]):
                 tag.decompose()
-            
+
             selectors = [
                 "article", "main", ".content", "#content",
                 ".post-content", ".article-body", ".entry-content",
-                ".mw-parser-output", "[itemprop='articleBody']"
+                ".mw-parser-output", "[itemprop='articleBody']",
             ]
-            
+
             content = None
             for sel in selectors:
                 el = soup.select_one(sel)
                 if el:
-                    ps = el.find_all(['p', 'li', 'h2', 'h3', 'blockquote'])
+                    ps = el.find_all(["p", "li", "h2", "h3", "blockquote"])
                     if ps:
-                        content = "\n".join([p.get_text(strip=True) for p in ps if len(p.get_text(strip=True)) > 20])
+                        content = "\n".join(
+                            [p.get_text(strip=True) for p in ps if len(p.get_text(strip=True)) > 20]
+                        )
                     if content and len(content) > 200:
                         break
-            
+
             if not content or len(content) < 200:
                 if soup.body:
-                    ps = soup.body.find_all('p')
-                    content = "\n".join([p.get_text(strip=True) for p in ps if len(p.get_text(strip=True)) > 30])
-            
+                    ps = soup.body.find_all("p")
+                    content = "\n".join(
+                        [p.get_text(strip=True) for p in ps if len(p.get_text(strip=True)) > 30]
+                    )
+
             if content and self.is_valid_content(content):
                 return content[:8000], "HTTP_SOUP"
-            
+
             return None, None
         except Exception as e:
-            logger.debug(f"HTTP failed: {e}")
+            logger.debug(f"HTTP thất bại: {e}")
             return None, None
         finally:
             session.close()
 
     def _scrape_playwright(self, url: str) -> str | None:
-        """Skill 2: Playwright (chỉ khi HTTP fail)"""
+        """Skill 2: Playwright headless (chỉ kích hoạt khi HTTP thất bại).
+
+        Dùng "domcontentloaded" thay vì "networkidle" để tránh timeout trên
+        trang có analytics/video/ads liên tục ping — DOM sẵn sàng đọc text
+        là đủ cho mục đích thu thập văn bản.
+        """
         self._init_playwright()
         if not self._context:
             return None
         page = self._context.new_page()
         try:
-            # "networkidle" không bao giờ đạt được trên trang có video/ads/
-            # analytics ping liên tục (ví dụ trang /video/ của Britannica) ->
-            # timeout ở goto() ném exception và mất luôn HTML đã load được.
-            # "domcontentloaded" đủ để DOM sẵn sàng đọc text, không cần chờ
-            # mọi request nền chạy xong.
             try:
                 page.goto(url, wait_until="domcontentloaded", timeout=15000)
             except Exception as e:
@@ -157,12 +169,13 @@ class T2Scrape:
                 return text[:8000]
             return None
         except Exception as e:
-            logger.debug(f"Playwright failed: {e}")
+            logger.debug(f"Playwright thất bại: {e}")
             return None
         finally:
             page.close()
 
     def _scrape_reddit(self, url: str) -> dict | None:
+        """Scraper chuyên dụng cho Reddit JSON API."""
         session = self._create_session()
         try:
             json_url = url.rstrip("/") + ".json"
@@ -179,56 +192,63 @@ class T2Scrape:
                         if body and len(body) > 50:
                             comments.append(body)
             full = f"{title}\n\n{content}\n\n--- COMMENTS ---\n" + "\n---\n".join(comments)
-            return {"url": url, "title": title, "content": full, "content_length": len(full), "scraped_at": time.time(), "skill_used": "REDDIT_JSON"}
-        except:
+            return {
+                "url": url,
+                "title": title,
+                "content": full,
+                "content_length": len(full),
+                "scraped_at": time.time(),
+                "skill_used": "REDDIT_JSON",
+            }
+        except Exception:
             return None
         finally:
             session.close()
 
-    # Đường dẫn thường là trang video/media-only -> ít/không có text để cào,
-    # tốn 8-20s delay + browser launch vô ích. Bỏ qua ngay từ đầu.
+    # URL patterns chỉ trỏ tới media/video — không có text để thu thập,
+    # tốn slot request + delay vô ích.
     SKIP_URL_PATTERNS = (
         "/video/", "/videos/", "/watch", "youtube.com", "vimeo.com",
-        # Trang phụ trợ MediaWiki/Fandom/Miraheze (edit/login/lịch sử sửa/
-        # trang đặc biệt) không chứa nội dung lore thực -> lãng phí 1 slot.
+        # Trang phụ trợ MediaWiki/Fandom (edit/login/history/special) không
+        # chứa nội dung thực sự — bỏ qua để không lãng phí slot scraping.
         "action=edit", "action=history", "special:", "veaction=",
         "/user:", "/talk:", "printable=yes", "oldid=",
     )
 
-    def _is_video_only_url(self, url: str) -> bool:
+    def _is_skip_url(self, url: str) -> bool:
         u = url.lower()
         return any(p in u for p in self.SKIP_URL_PATTERNS)
 
     def process_link(self, link: dict) -> dict | None:
-        """Xử lý 1 link - CHẬM"""
+        """Xử lý một link — HTTP trước, Playwright nếu HTTP thất bại."""
         url = link["url"]
         domain = link.get("domain", urlparse(url).netloc)
         scraper_type = link.get("scraper_type", "html_simple")
 
-        if self._is_video_only_url(url):
-            logger.info("         ⏭️  Video-only URL, skip")
+        if self._is_skip_url(url):
+            logger.info("         ⏭️  URL media-only, bỏ qua")
             return None
 
         if domain not in self.blackbook:
             self.blackbook[domain] = {"failures": 0, "status": "active", "skill": "HTTP"}
-        
-        # Reddit special
+
+        # Reddit dùng JSON API riêng
         if scraper_type == "reddit":
             result = self._scrape_reddit(url)
             if result:
                 record_success(self.blackbook, domain)
                 return result
             if record_failure(self.blackbook, domain):
-                logger.warning(f"         🚫 Banned domain (7 ngày): {domain}")
+                logger.warning(f"         🚫 Domain bị cách ly (7 ngày): {domain}")
             return None
-        
-        # Normal flow
+
+        # Flow thông thường: HTTP → Playwright
         current_skill = self.blackbook[domain].get("skill", "HTTP")
         skill_chain = ["HTTP", "PLAYWRIGHT"]
         start_idx = skill_chain.index(current_skill) if current_skill in skill_chain else 0
-        
+
         data, skill_used = None, None
-        
+
         for skill in skill_chain[start_idx:]:
             if skill == "HTTP":
                 data, spec = self._scrape_http(url)
@@ -236,12 +256,12 @@ class T2Scrape:
                     skill_used = spec
                     break
             elif skill == "PLAYWRIGHT":
-                logger.info(f"         [PLAYWRIGHT] Rút búa tạ...")
+                logger.info("         [PLAYWRIGHT] Khởi động headless browser...")
                 data = self._scrape_playwright(url)
                 if data:
                     skill_used = "PLAYWRIGHT"
                     break
-        
+
         if data:
             self.blackbook[domain]["skill"] = skill_used if skill_used != "SPA_JSON" else "HTTP"
             record_success(self.blackbook, domain)
@@ -249,77 +269,100 @@ class T2Scrape:
             if not title or len(title) < 10:
                 title = data.split("\n")[0][:100]
             return {
-                "url": url, "title": title, "content": data,
-                "content_length": len(data), "scraped_at": time.time(),
-                "skill_used": skill_used
+                "url": url,
+                "title": title,
+                "content": data,
+                "content_length": len(data),
+                "scraped_at": time.time(),
+                "skill_used": skill_used,
             }
         else:
             if record_failure(self.blackbook, domain):
-                logger.warning(f"         🚫 Banned domain (7 ngày): {domain}")
+                logger.warning(f"         🚫 Domain bị cách ly (7 ngày): {domain}")
             return None
 
     def validate_content(self, content_data: dict) -> bool:
+        """Content quality gate — lọc theo SCIENCE_ONTOLOGY_KEYWORDS.
+
+        Ngưỡng MIN_ONTOLOGY_KEYWORDS đặt thấp (mặc định 2) vì văn phong
+        học thuật thường súc tích, không lặp từ khóa dày đặc như nội dung
+        thông thường. Nâng ngưỡng chỉ sau khi xác nhận bằng dữ liệu mẫu
+        thật rằng quá nhiều nội dung không liên quan lọt qua.
+        """
         content = content_data.get("content", "")
         if len(content) < settings.MIN_CONTENT_LENGTH:
             return False
         content_lower = content.lower()
-        count = sum(1 for kw in settings.DRAMA_KEYWORDS if kw in content_lower)
-        return count >= settings.MIN_DRAMA_KEYWORDS
+        count = sum(1 for kw in settings.SCIENCE_ONTOLOGY_KEYWORDS if kw in content_lower)
+        return count >= settings.MIN_ONTOLOGY_KEYWORDS
 
     def scrape_links(self, links: list[dict]) -> list[dict]:
-        """Cào từng link 1 - RẤT CHẬM"""
+        """Cào toàn bộ danh sách link với anti-ban delay."""
         logger.info("=" * 80)
-        logger.info("📥 T2: SCRAPE (Anti-Ban Mode)")
+        logger.info("📥 T2: SCRAPE — Anti-Ban Mode")
         logger.info("=" * 80)
-        
+
         scraped = []
-        
-        for i, link in enumerate(links, 1):
-            logger.info(f"\n   [{i}/{len(links)}] {link['url'][:60]}...")
-            
-            content_data = self.process_link(link)
-            
-            if content_data:
-                if self.validate_content(content_data):
-                    content_data.update({
-                        "keyword": link.get("keyword"),
-                        "label": link.get("label"),
-                        "priority": link.get("priority"),
-                        "domain": link.get("domain")
-                    })
-                    scraped.append(content_data)
-                    logger.info(f"         ✅ {content_data['content_length']} chars [{content_data['skill_used']}]")
+
+        # BUG-4 fix: trước đây `_close_playwright()`/`_save_blackbook()`
+        # chỉ được gọi ở CUỐI vòng lặp — nếu 1 exception lạ (chưa được
+        # try/except trong process_link() bắt) bay ra giữa vòng lặp,
+        # Chromium subprocess trở thành zombie process (không bao giờ
+        # đóng). Bọc toàn bộ vòng lặp trong try/finally đảm bảo
+        # _save_blackbook() + _close_playwright() LUÔN chạy, dù thành
+        # công, dù lỗi biết trước, hay dù exception lạ bay ra giữa chừng.
+        try:
+            for i, link in enumerate(links, 1):
+                logger.info(f"\n   [{i}/{len(links)}] {link['url'][:70]}")
+
+                content_data = self.process_link(link)
+
+                if content_data:
+                    if self.validate_content(content_data):
+                        content_data.update({
+                            "keyword":  link.get("keyword"),
+                            "label":    link.get("label"),
+                            "priority": link.get("priority"),
+                            "domain":   link.get("domain"),
+                        })
+                        scraped.append(content_data)
+                        logger.info(
+                            f"         ✅ {content_data['content_length']} chars "
+                            f"[{content_data['skill_used']}]"
+                        )
+                    else:
+                        content = content_data.get("content", "")
+                        content_lower = content.lower()
+                        kw_count = sum(
+                            1 for kw in settings.SCIENCE_ONTOLOGY_KEYWORDS if kw in content_lower
+                        )
+                        logger.warning(
+                            f"         ⚠️  Nội dung không đạt ngưỡng — "
+                            f"len={len(content)} (min={settings.MIN_CONTENT_LENGTH}), "
+                            f"ontology_kw={kw_count} (min={settings.MIN_ONTOLOGY_KEYWORDS})"
+                        )
                 else:
-                    # Log chi tiết để debug tại sao bị loại
-                    content = content_data.get("content", "")
-                    content_lower = content.lower()
-                    kw_count = sum(1 for kw in settings.DRAMA_KEYWORDS if kw in content_lower)
-                    logger.warning(
-                        f"         ⚠️ Không đủ chất lượng — "
-                        f"len={len(content)} (min={settings.MIN_CONTENT_LENGTH}), "
-                        f"drama_kw={kw_count} (min={settings.MIN_DRAMA_KEYWORDS})"
+                    logger.error("         ❌ Scrape thất bại (HTTP + Playwright đều không thành công)")
+
+                # Lưu blackbook sau mỗi 3 link để không mất trạng thái nếu crash
+                if i % 3 == 0:
+                    self._save_blackbook()
+
+                # Delay giữa các request (bỏ qua link cuối)
+                if i < len(links):
+                    human_delay(
+                        min_sec=settings.MIN_REQUEST_DELAY,
+                        max_sec=settings.MAX_REQUEST_DELAY,
                     )
-            else:
-                logger.error(f"         ❌ Fail scrape (HTTP+Playwright đều thất bại)")
-            
-            # Lưu blackbook mỗi 3 links
-            if i % 3 == 0:
-                self._save_blackbook()
-            
-            # DELAY DÀI giữa các links (trừ link cuối cùng)
-            if i < len(links):
-                human_delay(
-                    min_sec=settings.MIN_REQUEST_DELAY,
-                    max_sec=settings.MAX_REQUEST_DELAY
-                )
-        
-        self._save_blackbook()
-        self._close_playwright()
-        
-        logger.info(f"\n📊 TỔNG: {len(scraped)} thành công")
+        finally:
+            self._save_blackbook()
+            self._close_playwright()
+
+        logger.info(f"\n📊 TỔNG: {len(scraped)} / {len(links)} link đạt tiêu chuẩn")
         return scraped
 
 
 def run_t2(links: list[dict]) -> list[dict]:
+    """Entry point cho T2."""
     scraper = T2Scrape()
     return scraper.scrape_links(links)
