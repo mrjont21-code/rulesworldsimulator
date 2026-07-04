@@ -1,0 +1,131 @@
+name: RulesWorldSimulator — T0-T5 Pipeline (Pomodoro)
+
+# ==============================================================================
+# Repo: rulesworldsimulator — Xử lý tri thức Khoa học (T0 Search → T5 Upload)
+# Tác vụ NẶNG: 8 vòng Pomodoro (25 phút làm / 15 phút nghỉ) ~ 5.3 giờ/run,
+# chiếm trọn băng thông kết nối MongoDB trong toàn bộ thời gian chạy.
+# Cron 00:00 UTC — 1 lần/ngày, KHÔNG overlap với worldpulse-tentacle (06:00 &
+# 12:00 UTC) để tránh 2 repo mở kết nối Mongo song song vào cùng thời điểm.
+# ==============================================================================
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_loops:
+        description: "Số vòng Pomodoro tối đa (mặc định 8 vòng ~ 5.3 giờ)"
+        required: false
+        default: "8"
+
+  schedule:
+    - cron: "0 0 * * *" # 00:00 UTC mỗi ngày
+
+permissions:
+  contents: write
+
+env:
+  PYTHONUNBUFFERED: "1"
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+
+jobs:
+  t0-t5-pipeline:
+    name: 🔬 T0-T5 Foundational Knowledge Pipeline
+    runs-on: ubuntu-latest
+    # Tác vụ nặng, cần chiếm trọn băng thông DB — chỉ 1 job duy nhất, không
+    # chạy song song với job nào khác trong cùng workflow này.
+    timeout-minutes: 360
+
+    steps:
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🐍 Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: requirements.txt
+
+      - name: 🎭 Cache Playwright Chromium (~/.cache/ms-playwright)
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('requirements.txt') }}
+
+      - name: 📦 Install Python Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: 🌐 Install Playwright Chromium (chỉ nếu cache miss)
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: playwright install chromium --with-deps
+
+      - name: 🌐 Install Playwright OS deps (khi cache hit, vẫn cần deps hệ thống)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: playwright install-deps chromium
+
+      - name: 🚀 Run T0-T5 Pipeline (--loop)
+        id: run_pipeline
+        continue-on-error: true
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          python main.py --loop
+        env:
+          MAX_LOOPS: ${{ github.event.inputs.max_loops || '8' }}
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+
+      - name: 💾 Commit & Push Generated JSON Data
+        if: always()
+        run: |
+          cd $GITHUB_WORKSPACE
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add -f data/raw/ 2>/dev/null || true
+          git add keyword_states/ blackbook.json 2>/dev/null || true
+
+          if git status --porcelain | grep -qE '^[MADRC]'; then
+            echo "📝 Phát hiện dữ liệu mới, đang commit..."
+            git commit -m "🤖 [Auto] Update rulesworldsimulator data - $(date +'%Y-%m-%d %H:%M UTC')"
+
+            TOKEN="${{ secrets.GHT_PAT_RULES }}"
+            if [ -z "$TOKEN" ]; then
+              TOKEN="${{ secrets.GITHUB_TOKEN }}"
+              echo "⚠️ Không tìm thấy GHT_PAT_RULES, sẽ sử dụng GITHUB_TOKEN mặc định."
+            fi
+
+            git remote set-url origin "https://x-access-token:${TOKEN}@github.com/${{ github.repository }}"
+            git pull --rebase origin ${{ github.ref_name }}
+            git push origin HEAD:${{ github.ref_name }}
+            echo "✅ Push thành công!"
+          else
+            echo "✅ Không có dữ liệu JSON mới để push."
+          fi
+
+      - name: 📊 Job Summary — Trạng thái tổng thể (nền đặc, không trong suốt)
+        if: always()
+        run: |
+          {
+            echo "## 🔬 RulesWorldSimulator — Kết quả chạy pipeline T0-T5"
+            echo ""
+            if [ "${{ steps.run_pipeline.outcome }}" == "success" ]; then
+              echo "### 🟢 **TRẠNG THÁI: PASS** — Pipeline hoàn tất không lỗi"
+            else
+              echo "### 🔴 **TRẠNG THÁI: FAIL** — ⚠️ Pipeline gặp lỗi, xem log step \`Run T0-T5 Pipeline\` ⚠️"
+            fi
+            echo ""
+            echo "| 🟩 Giai đoạn | 🟦 Mô tả |"
+            echo "|---|---|"
+            echo "| 🔍 T0 Search | Tìm URL theo 35 từ khóa xoay vòng round-robin |"
+            echo "| 🏷️ T1 Classify | Gắn nhãn & độ ưu tiên cho từng link |"
+            echo "| 📥 T2 Scrape | HTTP → Playwright fallback, anti-ban delay 8-20s |"
+            echo "| 🧹 T3 Normalize | Chuẩn hoá + băm nội dung (content_hash) |"
+            echo "| 🔁 T4 Deduplicate | Loại trùng qua cache hash dùng chung (mongo_shared.py) |"
+            echo "| 📤 T5 Upload | Ghi \`world_rules\` vào MongoDB + báo cáo động 🟢/🟠/🔴/⚪ |"
+            echo ""
+            echo "> ⏰ Lịch chạy: \`00:00 UTC\` hàng ngày — tách biệt hoàn toàn với worldpulse-tentacle (\`06:00\`/\`12:00 UTC\`) để không mở kết nối Mongo song song giữa 2 repo."
+          } >> "$GITHUB_STEP_SUMMARY"
