@@ -211,7 +211,7 @@
     "skill": "HTTP_SOUP"
   },
   "tvtropes.org": {
-    "failures": 0,
+    "failures": 1,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -382,7 +382,7 @@
     "skill": "HTTP_SOUP"
   },
   "www.jamescambias.com": {
-    "failures": 1,
+    "failures": 0,
     "status": "active",
     "skill": "HTTP_SOUP"
   },
@@ -397,12 +397,13 @@
     "skill": "HTTP_SOUP"
   },
   "multispeciesworldbuilding.com": {
-    "failures": 2,
-    "status": "active",
-    "skill": "HTTP"
+    "failures": 3,
+    "status": "banned",
+    "skill": "HTTP",
+    "banned_until": "2026-07-12T10:58:51.473260+00:00"
   },
   "www.adamasnemesis.com": {
-    "failures": 1,
+    "failures": 0,
     "status": "active",
     "skill": "HTTP_SOUP"
   },
@@ -412,7 +413,7 @@
     "skill": "HTTP_SOUP"
   },
   "hero.fandom.com": {
-    "failures": 0,
+    "failures": 1,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -422,14 +423,16 @@
     "skill": "PLAYWRIGHT"
   },
   "releasethatwitch.fandom.com": {
-    "failures": 2,
-    "status": "active",
-    "skill": "HTTP"
+    "failures": 3,
+    "status": "banned",
+    "skill": "HTTP",
+    "banned_until": "2026-07-12T11:06:10.576869+00:00"
   },
   "scifi.stackexchange.com": {
-    "failures": 2,
-    "status": "active",
-    "skill": "PLAYWRIGHT"
+    "failures": 3,
+    "status": "banned",
+    "skill": "PLAYWRIGHT",
+    "banned_until": "2026-07-12T11:04:12.455373+00:00"
   },
   "m.webnovel.com": {
     "failures": 0,
@@ -442,7 +445,7 @@
     "skill": "HTTP_SOUP"
   },
   "www.scribblehub.com": {
-    "failures": 1,
+    "failures": 2,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -477,7 +480,7 @@
     "skill": "HTTP_SOUP"
   },
   "powerlisting.fandom.com": {
-    "failures": 0,
+    "failures": 1,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -537,9 +540,10 @@
     "skill": "PLAYWRIGHT"
   },
   "creativesci-fi.fandom.com": {
-    "failures": 2,
-    "status": "active",
-    "skill": "HTTP"
+    "failures": 3,
+    "status": "banned",
+    "skill": "HTTP",
+    "banned_until": "2026-07-12T11:19:57.707075+00:00"
   },
   "sciencefictionfantasy.quora.com": {
     "failures": 0,
@@ -547,14 +551,15 @@
     "skill": "PLAYWRIGHT"
   },
   "captaintime.com": {
-    "failures": 0,
+    "failures": 1,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
   "politicalorders.substack.com": {
-    "failures": 2,
-    "status": "active",
-    "skill": "HTTP"
+    "failures": 3,
+    "status": "banned",
+    "skill": "HTTP",
+    "banned_until": "2026-07-12T11:16:59.677536+00:00"
   },
   "screenrant.com": {
     "failures": 0,
@@ -861,5 +866,10 @@
     "failures": 0,
     "status": "active",
     "skill": "PLAYWRIGHT"
+  },
+  "avp.fandom.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
   }
 }
