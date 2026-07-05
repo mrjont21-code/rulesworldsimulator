@@ -1,7 +1,7 @@
 {
   "keyword": "alien society caste hierarchy worldbuilding",
   "normalized": "alien_society_caste_hierarchy_worldbuilding",
-  "total_links_found": 12,
+  "total_links_found": 14,
   "links_scraped": 1,
   "scraped_urls": [
     "https://tropedia.fandom.com/wiki/Fantastic_Caste_System"
@@ -20,7 +20,7 @@
     "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light",
     "https://mastodon.social/@StartpageSearch"
   ],
-  "last_run": "2026-07-04T05:36:56.297342+00:00",
-  "run_count": 1,
-  "is_exhausted": false
+  "last_run": "2026-07-05T06:34:42.068043+00:00",
+  "run_count": 2,
+  "is_exhausted": true
 }

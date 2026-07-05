@@ -1,0 +1,37 @@
+{
+  "keyword": "regenerating monster weakness trope",
+  "normalized": "regenerating_monster_weakness_trope",
+  "total_links_found": 20,
+  "links_scraped": 4,
+  "scraped_urls": [
+    "https://allthetropes.org/wiki/Good_Thing_You_Can_Heal",
+    "https://dnd.sinister.net/oops-theyre-regenerating/",
+    "https://www.quora.com/How-do-you-defeat-a-monster-with-regeneration",
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/MonstrosityEqualsWeakness"
+  ],
+  "found_urls": [
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/MonstrosityEqualsWeakness",
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/AntiRegeneration",
+    "https://tvtropes.org/pmwiki/pmwiki.php/VideoGame/MonsterSanctuary",
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/SlidingScaleOfUndeadRegeneration",
+    "https://allthetropes.org/wiki/Good_Thing_You_Can_Heal",
+    "https://dnd.sinister.net/oops-theyre-regenerating/",
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/FromASingleCell",
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/GradualRegeneration",
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/RegeneratingMana",
+    "https://tvtropes.org/pmwiki/pmwiki.php/YMMV/MonsterHunterStories2WingsOfRuin",
+    "https://tropedia.fandom.com/wiki/Cannibalism_Superpower",
+    "https://tropedia.fandom.com/wiki/Unstoppable_Rage",
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/PerpetualMotionMonster",
+    "https://www.quora.com/How-do-you-defeat-a-monster-with-regeneration",
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/SwampMonster",
+    "https://hackerone.com/brave",
+    "https://status.brave.app/",
+    "https://chrome.google.com/webstore/detail/startpage-%E2%80%94-private-searc/fgmjlmbojbkmdpofahffgcpkhkngfpef",
+    "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light",
+    "https://mastodon.social/@StartpageSearch"
+  ],
+  "last_run": "2026-07-05T03:49:44.228112+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}

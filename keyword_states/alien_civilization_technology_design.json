@@ -1,7 +1,7 @@
 {
   "keyword": "alien civilization technology design",
   "normalized": "alien_civilization_technology_design",
-  "total_links_found": 20,
+  "total_links_found": 23,
   "links_scraped": 4,
   "scraped_urls": [
     "https://www.quora.com/What-kinds-of-technology-could-a-advanced-alien-civilization-have",
@@ -29,9 +29,10 @@
     "https://hackerone.com/brave",
     "https://status.brave.app/",
     "https://chrome.google.com/webstore/detail/startpage-%E2%80%94-private-searc/fgmjlmbojbkmdpofahffgcpkhkngfpef",
-    "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light"
+    "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light",
+    "https://mastodon.social/@StartpageSearch"
   ],
-  "last_run": "2026-07-04T04:55:25.233368+00:00",
-  "run_count": 1,
+  "last_run": "2026-07-05T06:16:35.665951+00:00",
+  "run_count": 2,
   "is_exhausted": false
 }

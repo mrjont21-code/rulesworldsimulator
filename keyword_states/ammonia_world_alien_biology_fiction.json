@@ -1,0 +1,38 @@
+{
+  "keyword": "ammonia world alien biology fiction",
+  "normalized": "ammonia_world_alien_biology_fiction",
+  "total_links_found": 18,
+  "links_scraped": 7,
+  "scraped_urls": [
+    "https://www.space.com/30404-alien-life-search-super-earths.html",
+    "https://treknews.net/2011/09/18/science-fiction-or-science-fact-ammonia-based-alien-life/",
+    "https://www.physicsforums.com/threads/can-a-human-and-an-ammonia-based-alien-coexist.866137/",
+    "https://www.wikidoc.org/index.php/Alternative_biochemistry",
+    "https://hangar1publishing.com/blogs/ufos-uaps-and-aliens/alien-biology",
+    "https://bigthink.com/hard-science/aliens/",
+    "http://arcana.wikidot.com/ammonia-as-biological-solvent"
+  ],
+  "found_urls": [
+    "https://treknews.net/2011/09/18/science-fiction-or-science-fact-ammonia-based-alien-life/",
+    "https://www.physicsforums.com/threads/can-a-human-and-an-ammonia-based-alien-coexist.866137/",
+    "http://arcana.wikidot.com/ammonia-as-biological-solvent",
+    "http://forums.xkcd.com/viewtopic.php?t=68370",
+    "https://lareviewofbooks.org/article/andy-weir-project-hail-mary-novel-film-interview/",
+    "https://www.newscientist.com/article/mg19426071-200-life-but-not-as-we-know-it/",
+    "https://reasons.org/explore/publications/articles/weird-life-is-ammonia-based-life-possible",
+    "https://www.space.com/30404-alien-life-search-super-earths.html",
+    "https://www.wikidoc.org/index.php/Alternative_biochemistry",
+    "https://en.wikipedia.org/wiki/Hypothetical_types_of_biochemistry",
+    "https://supernova.eso.org/exhibition/1208/",
+    "https://hangar1publishing.com/blogs/ufos-uaps-and-aliens/alien-biology",
+    "https://bigthink.com/hard-science/aliens/",
+    "https://hackerone.com/brave",
+    "https://status.brave.app/",
+    "https://chrome.google.com/webstore/detail/startpage-%E2%80%94-private-searc/fgmjlmbojbkmdpofahffgcpkhkngfpef",
+    "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light",
+    "https://mastodon.social/@StartpageSearch"
+  ],
+  "last_run": "2026-07-05T04:32:36.154311+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}

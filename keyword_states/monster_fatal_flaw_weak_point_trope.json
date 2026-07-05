@@ -1,0 +1,25 @@
+{
+  "keyword": "monster fatal flaw weak point trope",
+  "normalized": "monster_fatal_flaw_weak_point_trope",
+  "total_links_found": 9,
+  "links_scraped": 3,
+  "scraped_urls": [
+    "https://allthetropes.org/wiki/Fatal_Flaw",
+    "https://allthetropes.org/wiki/Attack_Its_Weak_Point",
+    "https://tropedia.fandom.com/wiki/Fatal_Flaw"
+  ],
+  "found_urls": [
+    "https://allthetropes.org/wiki/Fatal_Flaw",
+    "https://tropedia.fandom.com/wiki/Fatal_Flaw",
+    "https://tropedia.fandom.com/wiki/Attack_Its_Weak_Point",
+    "https://tropedia.fandom.com/wiki/Character_Flaw_Index",
+    "https://allthetropes.org/wiki/Attack_Its_Weak_Point",
+    "https://hackerone.com/brave",
+    "https://status.brave.app/",
+    "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light",
+    "https://mastodon.social/@StartpageSearch"
+  ],
+  "last_run": "2026-07-05T04:53:50.576801+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}

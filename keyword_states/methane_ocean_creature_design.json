@@ -1,0 +1,42 @@
+{
+  "keyword": "methane ocean creature design",
+  "normalized": "methane_ocean_creature_design",
+  "total_links_found": 20,
+  "links_scraped": 9,
+  "scraped_urls": [
+    "https://oceana.org/blog/fueled-methane-gas-bizarre-animals-flourish-deep-sea-jacuzzis/",
+    "https://en.wikipedia.org/wiki/Life_on_Titan",
+    "https://www.space.com/13639-alien-life-methane-habitable-zone.html",
+    "https://learningenglish.voanews.com/a/small-organism-in-deep-sea-rocks-eat-methane/2490007.html",
+    "https://brightside.me/articles/what-if-you-dive-into-a-liquid-methane-ocean-816245/",
+    "https://a-z-animals.com/articles/these-west-coast-sea-spiders-are-methane-powered/",
+    "https://www.centauri-dreams.org/2011/11/10/a-look-at-methane-based-life/",
+    "https://www.popularmechanics.com/science/animals/a65162811/methane-sea-spiders/",
+    "https://www.livescience.com/61141-methane-underworld-yucatan.html"
+  ],
+  "found_urls": [
+    "https://news.mongabay.com/2026/01/methane-chasers-hunting-a-climate-changing-gas-seeping-from-earths-seafloor/",
+    "https://oceana.org/blog/fueled-methane-gas-bizarre-animals-flourish-deep-sea-jacuzzis/",
+    "https://schmidtocean.org/cruise-log-post/methane-support-systems-of-deep-sea-ecosystems/",
+    "https://oceanexplorer.noaa.gov/wp-content/uploads/2025/04/activity-methane-hydrate-model.pdf",
+    "https://learningenglish.voanews.com/a/small-organism-in-deep-sea-rocks-eat-methane/2490007.html",
+    "https://oceantoday.noaa.gov/methane-seepsofthe-deepocean/",
+    "https://brightside.me/articles/what-if-you-dive-into-a-liquid-methane-ocean-816245/",
+    "https://a-z-animals.com/articles/these-west-coast-sea-spiders-are-methane-powered/",
+    "https://www.sciencefriday.com/segments/deep-sea-spider-methane/",
+    "https://en.wikipedia.org/wiki/Life_on_Titan",
+    "https://pmc.ncbi.nlm.nih.gov/articles/PMC12337312/",
+    "https://www.whoi.edu/oceanus/feature/sniffing-out-methane-in-the-deep-sea/",
+    "https://www.centauri-dreams.org/2011/11/10/a-look-at-methane-based-life/",
+    "https://www.popularmechanics.com/science/animals/a65162811/methane-sea-spiders/",
+    "https://www.livescience.com/61141-methane-underworld-yucatan.html",
+    "https://www.space.com/13639-alien-life-methane-habitable-zone.html",
+    "https://www.kpbs.org/news/science-technology/2025/02/06/new-species-found-where-methane-gas-seeps-from-the-ocean-floor",
+    "https://hackerone.com/brave",
+    "https://status.brave.app/",
+    "https://chrome.google.com/webstore/detail/startpage-%E2%80%94-private-searc/fgmjlmbojbkmdpofahffgcpkhkngfpef"
+  ],
+  "last_run": "2026-07-05T04:38:32.076804+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}

@@ -1,7 +1,7 @@
 {
   "keyword": "alien government political structure fiction",
   "normalized": "alien_government_political_structure_fiction",
-  "total_links_found": 18,
+  "total_links_found": 21,
   "links_scraped": 3,
   "scraped_urls": [
     "https://captaintime.com/political-systems-we-should-totally-steal-from-scifi-and-fantasy/",
@@ -28,7 +28,7 @@
     "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light",
     "https://mastodon.social/@StartpageSearch"
   ],
-  "last_run": "2026-07-04T05:01:39.825409+00:00",
-  "run_count": 1,
-  "is_exhausted": false
+  "last_run": "2026-07-05T06:18:40.380578+00:00",
+  "run_count": 2,
+  "is_exhausted": true
 }
