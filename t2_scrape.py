@@ -36,6 +36,7 @@ class T2Scrape:
         self._playwright = None
         self._browser = None
         self._context = None
+        self._playwright_available = True
 
     def _load_blackbook(self) -> dict:
         path = settings.BLACKBOOK_FILE
@@ -70,7 +71,8 @@ class T2Scrape:
                 user_agent=get_stealth_headers()["User-Agent"]
             )
         except Exception as e:
-            logger.warning(f"Playwright init thất bại: {e}")
+            logger.warning(f"⚠️ Playwright lỗi/Không có browser, chuyển sang HTTP-only: {e}")
+            self._playwright_available = False
             self._context = None
 
     def _close_playwright(self):
@@ -99,7 +101,24 @@ class T2Scrape:
         """Skill 1: HTTP với curl_cffi/httpx và HTML parsing đa tầng."""
         session = self._create_session()
         try:
-            resp = session.get(url, timeout=15.0)
+            resp = None
+            max_retries = 2
+            for attempt in range(max_retries + 1):
+                try:
+                    resp = session.get(url, timeout=15.0)
+                    break
+                except Exception as e:
+                    if attempt < max_retries:
+                        sleep_time = 5 if attempt == 0 else 10
+                        logger.warning(
+                            f"⚠️ Lỗi request (lần {attempt + 1}/{max_retries + 1}): {e} "
+                            f"— Retry sau {sleep_time}s"
+                        )
+                        time.sleep(sleep_time)
+                    else:
+                        logger.debug(f"HTTP thất bại sau {max_retries + 1} lần thử: {e}")
+                        return None, None
+
             html_text = resp.text
 
             # Sub-skill: SPA JSON (ưu tiên vì thường sạch hơn HTML soup)
@@ -154,6 +173,8 @@ class T2Scrape:
         trang có analytics/video/ads liên tục ping — DOM sẵn sàng đọc text
         là đủ cho mục đích thu thập văn bản.
         """
+        if not self._playwright_available:
+            return None
         self._init_playwright()
         if not self._context:
             return None
@@ -221,12 +242,22 @@ class T2Scrape:
 
     def process_link(self, link: dict) -> dict | None:
         """Xử lý một link — HTTP trước, Playwright nếu HTTP thất bại."""
+        start_time = time.time()
         url = link["url"]
         domain = link.get("domain", urlparse(url).netloc)
         scraper_type = link.get("scraper_type", "html_simple")
 
+        def _log_result(data) -> None:
+            elapsed_time = time.time() - start_time
+            logger.info(
+                f"[T2] Keyword: {link.get('keyword', 'N/A')} | "
+                f"Link: {url[:60]}... | "
+                f"Status: {'Success' if data else 'Failed'} | "
+                f"Time: {elapsed_time:.1f}s"
+            )
+
         if self._is_skip_url(url):
-            logger.info("         ⏭️  URL media-only, bỏ qua")
+            _log_result(None)
             return None
 
         if domain not in self.blackbook:
@@ -237,9 +268,11 @@ class T2Scrape:
             result = self._scrape_reddit(url)
             if result:
                 record_success(self.blackbook, domain)
+                _log_result(result)
                 return result
             if record_failure(self.blackbook, domain):
-                logger.warning(f"         🚫 Domain bị cách ly (7 ngày): {domain}")
+                logger.warning(f"🚫 Domain bị cách ly (7 ngày): {domain}")
+            _log_result(None)
             return None
 
         # Flow thông thường: HTTP → Playwright
@@ -256,7 +289,6 @@ class T2Scrape:
                     skill_used = spec
                     break
             elif skill == "PLAYWRIGHT":
-                logger.info("         [PLAYWRIGHT] Khởi động headless browser...")
                 data = self._scrape_playwright(url)
                 if data:
                     skill_used = "PLAYWRIGHT"
@@ -268,7 +300,7 @@ class T2Scrape:
             title = link.get("title", "")
             if not title or len(title) < 10:
                 title = data.split("\n")[0][:100]
-            return {
+            result = {
                 "url": url,
                 "title": title,
                 "content": data,
@@ -276,9 +308,12 @@ class T2Scrape:
                 "scraped_at": time.time(),
                 "skill_used": skill_used,
             }
+            _log_result(result)
+            return result
         else:
             if record_failure(self.blackbook, domain):
-                logger.warning(f"         🚫 Domain bị cách ly (7 ngày): {domain}")
+                logger.warning(f"🚫 Domain bị cách ly (7 ngày): {domain}")
+            _log_result(None)
             return None
 
     def validate_content(self, content_data: dict) -> bool:

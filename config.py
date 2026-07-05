@@ -4,7 +4,11 @@ Config - Foundational Knowledge Engine (World Simulator)
 Pipeline này là hệ thống thu thập tri thức khoa học khách quan để xây dựng
 nền tảng quy luật vũ trụ mô phỏng. Mọi hằng số ở đây phục vụ mục tiêu đó.
 """
+import logging
 import os
+import sys
+
+logger = logging.getLogger(__name__)
 
 
 class Settings:
@@ -38,6 +42,16 @@ class Settings:
     # === FILES ===
     ENGINES_FILE = "search_engines.json"
     BLACKBOOK_FILE = "blackbook.json"
+
+    # === PRE-UPLOAD HARD FILTER (MVP — chưa cần AI lọc) ===
+    # LƯU Ý: KHÁC với MIN_CONTENT_LENGTH (300) ở mục SCRAPING phía trên —
+    # hằng số đó dùng cho T2 (content quality gate lúc scrape, dựa trên
+    # SCIENCE_ONTOLOGY_KEYWORDS). Bộ hằng số dưới đây dùng cho bước lọc
+    # rác cứng NGAY TRƯỚC KHI UPLOAD lên MongoDB (T5). Đặt tên riêng
+    # (FILTER_MIN_CONTENT_LENGTH) để không đè lên logic T2 đã có.
+    MIN_TITLE_LENGTH = 10
+    FILTER_MIN_CONTENT_LENGTH = 200
+    ALLOWED_LANGUAGES = ["en"]  # Tạm thời chỉ lấy tiếng Anh
 
     # === DATA DIRS ===
     DATA_DIR = "data"
@@ -143,3 +157,44 @@ settings = Settings()
 
 for d in [settings.DATA_DIR, settings.RAW_DIR, settings.QUEUE_DIR, settings.KEYWORD_STATE_DIR]:
     os.makedirs(d, exist_ok=True)
+
+
+def validate_startup_config() -> None:
+    """Config & Database Guard — kiểm tra TOÀN BỘ điều kiện tối thiểu để
+    pipeline chạy được TRƯỚC KHI làm bất cứ việc gì tốn thời gian/quota
+    (search, scrape, gọi LLM...). Nếu thiếu 1 điều kiện bắt buộc ->
+    log lỗi RÕ RÀNG và `sys.exit(1)` ngay (chống "chết lén" giữa chừng).
+
+    Không raise exception — cố tình dùng sys.exit(1) để dừng tiến trình
+    dứt khoát, kể cả khi được gọi từ trong try/except ở nơi khác.
+    """
+    is_valid = True
+
+    # 1. MONGODB_URI không được rỗng
+    if not settings.MONGODB_URI:
+        logger.error("❌ [CONFIG] MONGODB_URI đang rỗng — chưa set biến môi trường MONGODB_URI.")
+        is_valid = False
+
+    # 2. KEYWORDS_FILE phải tồn tại trên disk
+    if not os.path.isfile(settings.KEYWORDS_FILE):
+        logger.error(f"❌ [CONFIG] KEYWORDS_FILE không tồn tại: '{settings.KEYWORDS_FILE}'")
+        is_valid = False
+
+    # 3. ENGINES_FILE phải tồn tại trên disk
+    if not os.path.isfile(settings.ENGINES_FILE):
+        logger.error(f"❌ [CONFIG] ENGINES_FILE không tồn tại: '{settings.ENGINES_FILE}'")
+        is_valid = False
+
+    # 4. Thư mục output — tự tạo nếu chưa có, KHÔNG báo lỗi cho trường hợp này
+    for output_dir in [settings.RAW_DIR, settings.KEYWORD_STATE_DIR]:
+        try:
+            os.makedirs(output_dir, exist_ok=True)
+        except Exception as e:
+            logger.error(f"❌ [CONFIG] Không thể tạo thư mục output '{output_dir}': {e}")
+            is_valid = False
+
+    if not is_valid:
+        logger.error("🛑 [CONFIG] Startup config validation THẤT BẠI — dừng tiến trình.")
+        sys.exit(1)
+
+    logger.info("✅ [CONFIG] Startup config validation OK — đủ điều kiện chạy pipeline.")

@@ -3,6 +3,7 @@ MAIN: Orchestrator - TUẦN TỰ TỪNG KEYWORD
 Flow: Keyword A → Search → Classify → Scrape → Normalize → Dedup → Upload → Keyword B → ...
 """
 import os
+import re
 import sys
 import time
 import logging
@@ -18,7 +19,8 @@ from t2_scrape import run_t2
 from t3_normalize import run_t3
 from t4_deduplicate import run_t4
 from t5_upload import run_t5
-from stealth import keyword_break, human_delay
+from t6_rule_engine_bridge import forge_and_validate_uploaded_rules
+from stealth import keyword_break
 from mongo_shared import close_shared_client
 
 MAX_LOOPS = int(os.getenv("MAX_LOOPS", "8"))
@@ -30,6 +32,85 @@ logging.basicConfig(
     stream=sys.stderr
 )
 logger = logging.getLogger("MAIN")
+
+# ============================================================
+# CHECKPOINT: cơ chế phục hồi thô sơ, chống mất tiến độ khi
+# tiến trình bị dừng giữa chừng ở T2 (scrape - chậm 8-20s/link).
+# Mỗi keyword có 1 file JSON riêng trong data/checkpoints/.
+# ============================================================
+CHECKPOINT_DIR = os.path.join("data", "checkpoints")
+
+
+def _checkpoint_path(keyword: str) -> str:
+    """Chuẩn hoá keyword thành tên file an toàn (giữ ký tự chữ/số/gạch dưới)."""
+    safe = re.sub(r'[^\w\-]+', '_', keyword.strip(), flags=re.UNICODE)
+    return os.path.join(CHECKPOINT_DIR, f"{safe}.json")
+
+
+def save_checkpoint(keyword: str, classified_links: list) -> None:
+    """Ghi list links đã classify (sau T1) vào file checkpoint của keyword."""
+    os.makedirs(CHECKPOINT_DIR, exist_ok=True)
+    path = _checkpoint_path(keyword)
+    try:
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(
+                {"keyword": keyword, "classified_links": classified_links},
+                f, ensure_ascii=False, indent=2
+            )
+        logger.info(f"💾 Đã lưu checkpoint '{keyword}' ({len(classified_links)} links)")
+    except OSError as e:
+        logger.error(f"❌ Lỗi lưu checkpoint '{keyword}': {e}")
+
+
+def load_checkpoint(keyword: str):
+    """Đọc checkpoint của keyword. Trả về list nếu có, None nếu không có/lỗi."""
+    path = _checkpoint_path(keyword)
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        return data.get("classified_links")
+    except (json.JSONDecodeError, OSError) as e:
+        logger.warning(f"⚠️ Checkpoint '{keyword}' đọc lỗi ({e}), bỏ qua")
+        return None
+
+
+def clear_checkpoint(keyword: str) -> None:
+    """Xóa file checkpoint của keyword (khi đã xử lý xong hoặc không cần nữa)."""
+    path = _checkpoint_path(keyword)
+    if os.path.exists(path):
+        try:
+            os.remove(path)
+            logger.info(f"🧹 Đã xóa checkpoint '{keyword}'")
+        except OSError as e:
+            logger.error(f"❌ Lỗi xóa checkpoint '{keyword}': {e}")
+
+
+def _find_pending_checkpoint():
+    """
+    Quét data/checkpoints/ tìm phiên dở dang.
+    Lưu ý: keyword chỉ được T0 xác định SAU khi chạy (round-robin nội bộ),
+    nên không thể "load_checkpoint(keyword) trước run_t0" theo đúng nghĩa đen -
+    thay vào đó ta quét file để biết keyword nào đang dang dở, nếu có.
+    Trả về (keyword, classified_links) hoặc None.
+    """
+    if not os.path.isdir(CHECKPOINT_DIR):
+        return None
+    for fname in sorted(os.listdir(CHECKPOINT_DIR)):
+        if not fname.endswith(".json"):
+            continue
+        fpath = os.path.join(CHECKPOINT_DIR, fname)
+        try:
+            with open(fpath, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            keyword = data.get("keyword")
+            classified_links = data.get("classified_links")
+            if keyword and classified_links is not None:
+                return keyword, classified_links
+        except (json.JSONDecodeError, OSError):
+            continue
+    return None
 
 
 def load_keywords() -> list[str]:
@@ -47,23 +128,35 @@ def process_single_keyword(keywords: list[str], run_id: str, stats: dict) -> boo
     Xử lý 1 keyword hoàn chỉnh: Search → Classify → Scrape → Normalize → Dedup → Upload
     Trả về True nếu xử lý thành công, False nếu hết keyword/thời gian
     """
-    # === T0: Search 1 keyword ===
-    result = run_t0_single_keyword(keywords)
-    if result is None:
-        return False
-    
-    keyword, links, state = result
-    stats["keywords_used"].append(keyword)
-    stats["links_found"] += len(links)
-    
-    # === T1: Classify ===
-    classified = run_t1(links)
-    
+    # === CHECKPOINT: kiểm tra phiên dở dang trước khi chạy T0 ===
+    pending = _find_pending_checkpoint()
+
+    if pending is not None:
+        keyword, classified = pending
+        stats["keywords_used"].append(keyword)
+        logger.info("🔄 Phục hồi Checkpoint, bỏ qua T0 & T1")
+    else:
+        # === T0: Search 1 keyword ===
+        result = run_t0_single_keyword(keywords)
+        if result is None:
+            return False
+
+        keyword, links, state = result
+        stats["keywords_used"].append(keyword)
+        stats["links_found"] += len(links)
+
+        # === T1: Classify ===
+        classified = run_t1(links)
+
+        # Lưu checkpoint ngay sau T1, trước khi vào T2 (chậm, dễ bị dừng giữa chừng)
+        save_checkpoint(keyword, classified)
+
     # === T2: Scrape (CHẬM - 8-20s/link) ===
     scraped = run_t2(classified)
     stats["links_scraped"] += len(scraped)
     
     if not scraped:
+        clear_checkpoint(keyword)
         return True  # Vẫn trả về True để chuyển keyword khác
     
     # === T3: Normalize ===
@@ -77,7 +170,16 @@ def process_single_keyword(keywords: list[str], run_id: str, stats: dict) -> boo
     # === T5: Upload ===
     # T5 sẽ cộng dồn rules_uploaded nội bộ; không cộng thêm ở đây tránh double-count
     run_t5(unique, run_id, stats)
-    
+
+    # === CHECKPOINT: T5 thành công -> xóa checkpoint, không cần phục hồi nữa ===
+    clear_checkpoint(keyword)
+
+    # === T6 -> rule_engine: Forge Blueprint & kiểm tra tính nhất quán ===
+    # BẮT BUỘC chạy sau khi T5 hoàn thành, trước khi vòng lặp keyword kết
+    # thúc (xem t6_rule_engine_bridge.py để biết chi tiết adapter và các
+    # giới hạn đã biết giữa 2 bộ schema khác nhau của T6 và rule_engine).
+    forge_and_validate_uploaded_rules(unique, stats)
+
     return True
 
 
@@ -113,7 +215,11 @@ def run_pomodoro_loop():
                 "contents_validated": 0,
                 "duplicates_removed": 0,
                 "rules_uploaded": 0,
-                "rules_attempted": 0
+                "rules_attempted": 0,
+                "blueprints_forged": 0,
+                "blueprints_validation_errors": 0,
+                "blueprints_validation_warnings": 0,
+                "blueprints_validation_skipped": 0,
             }
             
             # XỬ LÝ TUẦN TỰ TỪNG KEYWORD
@@ -146,6 +252,12 @@ def run_pomodoro_loop():
             logger.info(f"   Keywords:    {len(stats['keywords_used'])}")
             logger.info(f"   Links:       {stats['links_found']} found → {stats['links_scraped']} scraped")
             logger.info(f"   Contents:    {stats['contents_validated']} valid ({stats['duplicates_removed']} dup)")
+            logger.info(
+                f"   Blueprints:  {stats['blueprints_forged']} forged "
+                f"({stats['blueprints_validation_errors']} lỗi, "
+                f"{stats['blueprints_validation_warnings']} cảnh báo, "
+                f"{stats['blueprints_validation_skipped']} bỏ qua)"
+            )
             logger.info("=" * 80)
             
             # Save run log
@@ -178,7 +290,9 @@ def run_single_session():
         "started_at": datetime.now(timezone.utc).isoformat(),
         "keywords_used": [], "links_found": 0, "links_scraped": 0,
         "contents_validated": 0, "duplicates_removed": 0, "rules_uploaded": 0,
-        "rules_attempted": 0
+        "rules_attempted": 0, "blueprints_forged": 0,
+        "blueprints_validation_errors": 0, "blueprints_validation_warnings": 0,
+        "blueprints_validation_skipped": 0,
     }
     
     process_single_keyword(keywords, run_id, stats)

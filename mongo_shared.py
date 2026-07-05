@@ -67,7 +67,31 @@ def get_shared_db():
         return None
 
     _db = client[settings.MONGODB_DB_NAME]
+    ensure_indexes(_db)
     return _db
+
+
+def ensure_indexes(db) -> None:
+    """Đảm bảo các Index cần thiết cho collection `world_rules` tồn tại.
+    Idempotent — `create_index` không lỗi nếu index cùng cấu hình đã có,
+    nên gọi lại nhiều lần (mỗi lần `get_shared_db()` kết nối lần đầu) là
+    an toàn.
+
+    - `content_hash`: unique -> chống trùng lặp ở TẦNG DB (defense-in-depth
+      bên cạnh dedup ở tầng ứng dụng qua `get_existing_hashes()`).
+    - `keyword`, `rule_type`: tăng tốc truy vấn lọc theo các trường này.
+
+    `background=True` để không khóa collection khi tạo index trên dữ
+    liệu đã có sẵn.
+    """
+    try:
+        coll = db[settings.MONGODB_COLLECTION_RULES]
+        coll.create_index("content_hash", unique=True, background=True)
+        coll.create_index("keyword", background=True)
+        coll.create_index("rule_type", background=True)
+        logger.info("✅ Đã đảm bảo indexes (content_hash unique, keyword, rule_type) cho 'world_rules'.")
+    except Exception as e:
+        logger.warning(f"⚠️ Không thể tạo indexes cho 'world_rules': {e}")
 
 
 def get_existing_hashes() -> set[str]:
