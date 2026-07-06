@@ -16,9 +16,10 @@
     "skill": "HTTP"
   },
   "www.quora.com": {
-    "failures": 0,
-    "status": "active",
-    "skill": "PLAYWRIGHT"
+    "failures": 4,
+    "status": "banned",
+    "skill": "PLAYWRIGHT",
+    "banned_until": "2026-07-13T04:47:21.928490+00:00"
   },
   "www.sciencedirect.com": {
     "failures": 0,
@@ -211,7 +212,7 @@
     "skill": "HTTP_SOUP"
   },
   "tvtropes.org": {
-    "failures": 1,
+    "failures": 2,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -572,9 +573,10 @@
     "skill": "PLAYWRIGHT"
   },
   "forums.spacebattles.com": {
-    "failures": 2,
-    "status": "active",
-    "skill": "HTTP"
+    "failures": 3,
+    "status": "banned",
+    "skill": "HTTP",
+    "banned_until": "2026-07-13T03:40:53.362919+00:00"
   },
   "writersense.blogspot.com": {
     "failures": 0,
@@ -587,9 +589,10 @@
     "skill": "HTTP_SOUP"
   },
   "literarycompass.com": {
-    "failures": 2,
-    "status": "active",
-    "skill": "HTTP"
+    "failures": 3,
+    "status": "banned",
+    "skill": "HTTP",
+    "banned_until": "2026-07-13T03:42:54.484002+00:00"
   },
   "www.scinexic.com": {
     "failures": 0,
@@ -599,7 +602,7 @@
   "99percentinvisible.org": {
     "failures": 0,
     "status": "active",
-    "skill": "HTTP_SOUP"
+    "skill": "PLAYWRIGHT"
   },
   "architizer.com": {
     "failures": 0,
@@ -612,7 +615,7 @@
     "skill": "HTTP_SOUP"
   },
   "www.architectsjournal.co.uk": {
-    "failures": 1,
+    "failures": 0,
     "status": "active",
     "skill": "HTTP_SOUP"
   },
@@ -637,7 +640,7 @@
     "skill": "HTTP_SOUP"
   },
   "cwesleyclough.wordpress.com": {
-    "failures": 0,
+    "failures": 1,
     "status": "active",
     "skill": "HTTP_SOUP"
   },
@@ -658,9 +661,10 @@
     "skill": "PLAYWRIGHT"
   },
   "cosmobiota.substack.com": {
-    "failures": 2,
-    "status": "active",
-    "skill": "HTTP"
+    "failures": 3,
+    "status": "banned",
+    "skill": "HTTP",
+    "banned_until": "2026-07-13T03:53:00.657308+00:00"
   },
   "www.infyways.com": {
     "failures": 0,
@@ -688,9 +692,10 @@
     "skill": "PLAYWRIGHT"
   },
   "mitpress.mit.edu": {
-    "failures": 2,
-    "status": "active",
-    "skill": "HTTP"
+    "failures": 3,
+    "status": "banned",
+    "skill": "HTTP",
+    "banned_until": "2026-07-13T03:54:34.174230+00:00"
   },
   "grokipedia.com": {
     "failures": 0,
@@ -763,7 +768,7 @@
     "skill": "HTTP_SOUP"
   },
   "malcolmnicholson.wordpress.com": {
-    "failures": 1,
+    "failures": 0,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -773,7 +778,7 @@
     "skill": "HTTP_SOUP"
   },
   "selfawarepatterns.com": {
-    "failures": 1,
+    "failures": 0,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -818,7 +823,7 @@
     "skill": "HTTP_SOUP"
   },
   "astrapublishinghouse.com": {
-    "failures": 0,
+    "failures": 1,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -828,7 +833,7 @@
     "skill": "PLAYWRIGHT"
   },
   "www.libraryjournal.com": {
-    "failures": 0,
+    "failures": 1,
     "status": "active",
     "skill": "HTTP_SOUP"
   },
@@ -838,9 +843,10 @@
     "skill": "HTTP_SOUP"
   },
   "www.fantasticfiction.com": {
-    "failures": 2,
-    "status": "active",
-    "skill": "HTTP"
+    "failures": 3,
+    "status": "banned",
+    "skill": "HTTP",
+    "banned_until": "2026-07-13T04:41:58.217913+00:00"
   },
   "wiki.hoodedhorse.com": {
     "failures": 1,
@@ -871,5 +877,81 @@
     "failures": 1,
     "status": "active",
     "skill": "HTTP"
+  },
+  "www.verduria.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "faculty.washington.edu": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "forum.paradoxplaza.com": {
+    "failures": 2,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.imdb.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "speculativeevolution.fandom.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "aliens.fandom.com": {
+    "failures": 3,
+    "status": "banned",
+    "skill": "HTTP",
+    "banned_until": "2026-07-13T04:57:10.145173+00:00"
+  },
+  "novum-terram.fandom.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "wiki.starbase118.net": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.thecompanion.app": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.horrorreview.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "bibliorex.wordpress.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.startreklives.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "biosector01.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.psychologytoday.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "ysabetwordsmith.livejournal.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
   }
 }

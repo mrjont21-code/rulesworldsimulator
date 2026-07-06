@@ -1,0 +1,15 @@
+{
+  "keyword": "alien clan dynasty succession lore",
+  "normalized": "alien_clan_dynasty_succession_lore",
+  "total_links_found": 3,
+  "links_scraped": 0,
+  "scraped_urls": [],
+  "found_urls": [
+    "https://chrome.google.com/webstore/detail/startpage-%E2%80%94-private-searc/fgmjlmbojbkmdpofahffgcpkhkngfpef",
+    "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light",
+    "https://mastodon.social/@StartpageSearch"
+  ],
+  "last_run": "2026-07-06T05:38:21.053081+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}

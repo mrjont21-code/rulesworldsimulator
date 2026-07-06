@@ -1,0 +1,14 @@
+{
+  "keyword": "alien death dissolve effect",
+  "normalized": "alien_death_dissolve_effect",
+  "total_links_found": 2,
+  "links_scraped": 0,
+  "scraped_urls": [],
+  "found_urls": [
+    "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light",
+    "https://mastodon.social/@StartpageSearch"
+  ],
+  "last_run": "2026-07-06T05:52:23.890700+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}

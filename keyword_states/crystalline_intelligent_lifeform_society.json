@@ -1,0 +1,33 @@
+{
+  "keyword": "crystalline intelligent lifeform society",
+  "normalized": "crystalline_intelligent_lifeform_society",
+  "total_links_found": 18,
+  "links_scraped": 2,
+  "scraped_urls": [
+    "https://en.wikipedia.org/wiki/Home_Soil",
+    "https://www.wired.com/2013/01/living-crystal/"
+  ],
+  "found_urls": [
+    "https://memory-alpha.fandom.com/wiki/Crystalline_Entity",
+    "https://en.wikipedia.org/wiki/Hypothetical_types_of_biochemistry",
+    "https://wiki.starbase118.net/wiki/Lumerian",
+    "https://www.wired.com/2013/01/living-crystal/",
+    "https://www.thecompanion.app/star-trek-the-science-of-the-crystalline-entity/",
+    "https://aliens.fandom.com/wiki/Sapience",
+    "https://en.wikipedia.org/wiki/Home_Soil",
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/SiliconBasedLife",
+    "https://link.springer.com/content/pdf/10.1057/9780230361362_4.pdf",
+    "https://aliens.fandom.com/wiki/Crystalline_Entity",
+    "https://www.horrorreview.com/book-review-a-dark-genesis/",
+    "https://bibliorex.wordpress.com/2021/07/05/book-review-a-dark-genesis-by-cheryl-lawson/",
+    "https://www.startreklives.com/cultures/crystalline.htm",
+    "https://hackerone.com/brave",
+    "https://status.brave.app/",
+    "https://chrome.google.com/webstore/detail/startpage-%E2%80%94-private-searc/fgmjlmbojbkmdpofahffgcpkhkngfpef",
+    "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light",
+    "https://mastodon.social/@StartpageSearch"
+  ],
+  "last_run": "2026-07-06T04:57:10.227846+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}
