@@ -1,0 +1,25 @@
+{
+  "keyword": "alien government political structure fiction",
+  "normalized": "alien_government_political_structure_fiction",
+  "total_links_found": 11,
+  "links_scraped": 1,
+  "scraped_urls": [
+    "https://avp.fandom.com/wiki/Union_of_Progressive_Peoples"
+  ],
+  "found_urls": [
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/AliensNeverInventedDemocracy",
+    "https://captaintime.com/political-systems-we-should-totally-steal-from-scifi-and-fantasy/",
+    "https://memory-gamma.fandom.com/wiki/Confederation_of_Earth",
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/OneWorldOrder",
+    "https://sciencefictionfantasy.quora.com/Why-is-it-that-so-many-Sci-Fi-planets-are-ruled-over-by-a-single-world-government-Are-there-any-works-where-a-galactic",
+    "https://www.imagineforest.com/blog/fictional-political-systems/",
+    "https://avp.fandom.com/wiki/Union_of_Progressive_Peoples",
+    "https://hackerone.com/brave",
+    "https://status.brave.app/",
+    "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light",
+    "https://mastodon.social/@StartpageSearch"
+  ],
+  "last_run": "2026-07-07T03:52:51.961818+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}

@@ -1,0 +1,27 @@
+{
+  "keyword": "alien diplomacy war conflict fiction",
+  "normalized": "alien_diplomacy_war_conflict_fiction",
+  "total_links_found": 13,
+  "links_scraped": 1,
+  "scraped_urls": [
+    "https://hackerone.com/brave"
+  ],
+  "found_urls": [
+    "https://www.goodreads.com/book/show/11995902-alien-diplomacy",
+    "https://www.goodreads.com/author/show/3219496.Gini_Koch",
+    "https://astrapublishinghouse.com/product/alien-diplomacy-9781101579916/",
+    "https://en.wikipedia.org/wiki/Diplomatic_Act",
+    "https://beta.thestorygraph.com/book_reviews/380bcb2b-b9b1-4433-a3c6-ea8b884f4a05",
+    "https://www.goodreads.com/list/show/77675.Alien_Diplomacy_and_Interspecies_Friendship",
+    "https://www.barnesandnoble.com/w/alien-diplomacy-gini-koch/1102497723",
+    "https://www.libraryjournal.com/review/alien-diplomacy",
+    "https://www.foreignaffairsreview.com/home/aliens-diplomacy-and-the-threat-of-the-dark-forest",
+    "https://hackerone.com/brave",
+    "https://status.brave.app/",
+    "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light",
+    "https://mastodon.social/@StartpageSearch"
+  ],
+  "last_run": "2026-07-07T04:55:39.418503+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}

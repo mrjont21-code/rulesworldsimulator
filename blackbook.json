@@ -212,7 +212,7 @@
     "skill": "HTTP_SOUP"
   },
   "tvtropes.org": {
-    "failures": 2,
+    "failures": 0,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -414,7 +414,7 @@
     "skill": "HTTP_SOUP"
   },
   "hero.fandom.com": {
-    "failures": 1,
+    "failures": 0,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -446,9 +446,10 @@
     "skill": "HTTP_SOUP"
   },
   "www.scribblehub.com": {
-    "failures": 2,
-    "status": "active",
-    "skill": "PLAYWRIGHT"
+    "failures": 3,
+    "status": "banned",
+    "skill": "PLAYWRIGHT",
+    "banned_until": "2026-07-14T03:37:40.879457+00:00"
   },
   "www.goodreads.com": {
     "failures": 0,
@@ -481,14 +482,15 @@
     "skill": "HTTP_SOUP"
   },
   "powerlisting.fandom.com": {
-    "failures": 1,
+    "failures": 0,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
   "civilization.fandom.com": {
-    "failures": 2,
-    "status": "active",
-    "skill": "HTTP"
+    "failures": 3,
+    "status": "banned",
+    "skill": "HTTP",
+    "banned_until": "2026-07-14T03:48:14.145383+00:00"
   },
   "www.cambridge.org": {
     "failures": 0,
@@ -536,7 +538,7 @@
     "skill": "HTTP_SOUP"
   },
   "memory-gamma.fandom.com": {
-    "failures": 0,
+    "failures": 1,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -552,7 +554,7 @@
     "skill": "PLAYWRIGHT"
   },
   "captaintime.com": {
-    "failures": 1,
+    "failures": 2,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -640,7 +642,7 @@
     "skill": "HTTP_SOUP"
   },
   "cwesleyclough.wordpress.com": {
-    "failures": 1,
+    "failures": 2,
     "status": "active",
     "skill": "HTTP_SOUP"
   },
@@ -656,7 +658,7 @@
     "banned_until": "2026-07-10T05:49:55.722354+00:00"
   },
   "writing.stackexchange.com": {
-    "failures": 0,
+    "failures": 1,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -768,7 +770,7 @@
     "skill": "HTTP_SOUP"
   },
   "malcolmnicholson.wordpress.com": {
-    "failures": 0,
+    "failures": 1,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -778,7 +780,7 @@
     "skill": "HTTP_SOUP"
   },
   "selfawarepatterns.com": {
-    "failures": 0,
+    "failures": 1,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -788,7 +790,7 @@
     "skill": "HTTP_SOUP"
   },
   "psyche.co": {
-    "failures": 0,
+    "failures": 1,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -823,7 +825,7 @@
     "skill": "HTTP_SOUP"
   },
   "astrapublishinghouse.com": {
-    "failures": 1,
+    "failures": 2,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -833,7 +835,7 @@
     "skill": "PLAYWRIGHT"
   },
   "www.libraryjournal.com": {
-    "failures": 1,
+    "failures": 0,
     "status": "active",
     "skill": "HTTP_SOUP"
   },
@@ -874,9 +876,9 @@
     "skill": "PLAYWRIGHT"
   },
   "avp.fandom.com": {
-    "failures": 1,
+    "failures": 0,
     "status": "active",
-    "skill": "HTTP"
+    "skill": "HTTP_SOUP"
   },
   "www.verduria.org": {
     "failures": 0,
@@ -953,5 +955,50 @@
     "failures": 0,
     "status": "active",
     "skill": "PLAYWRIGHT"
+  },
+  "obscuredinosaurfacts.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "fanlore.org": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.tumblr.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.therookies.co": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.geeknative.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "unm-bioblog.blogspot.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "earthlingnature.wordpress.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "dic.pixiv.net": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "kbpedia.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
   }
 }

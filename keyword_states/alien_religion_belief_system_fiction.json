@@ -1,0 +1,32 @@
+{
+  "keyword": "alien religion belief system fiction",
+  "normalized": "alien_religion_belief_system_fiction",
+  "total_links_found": 20,
+  "links_scraped": 0,
+  "scraped_urls": [],
+  "found_urls": [
+    "https://en.wikipedia.org/wiki/UFO_religion",
+    "https://sf-encyclopedia.com/entry/religion",
+    "https://absolutewrite.com/forums/archive/index.php/t-8979.html",
+    "https://digitalcommons.unomaha.edu/cgi/viewcontent.cgi?article=1642&context=jrf",
+    "https://www.barnesandnoble.com/blog/sci-fi-fantasy/sci-fi-books-about-religious-missions/",
+    "https://www.smithsonianmag.com/air-space-magazine/science-aliens-part-6-would-they-be-religious-180979357/",
+    "https://www.worldreligionnews.com/entertainment/religions-place-science-fiction/",
+    "https://perennialfollower.wordpress.com/2018/03/15/aliens-and-religion/",
+    "https://malcolmnicholson.wordpress.com/science-fiction-on-alien-contact-and-religion/",
+    "https://www.space.com/10670-extraterrestrial-life-religious-beliefs.html",
+    "https://en.wikipedia.org/wiki/Fictional_religion",
+    "https://www.sciphijournal.org/index.php/2020/06/26/faith-in-the-future-or-does-religion-have-a-place-in-science-fiction/",
+    "https://selfawarepatterns.com/2021/10/30/would-aliens-or-ai-have-religion/",
+    "https://www.bartleby.com/essay/Alien-Theories-The-Ancient-Alien-Religion-B6F48877470D2BE7",
+    "https://en.wikipedia.org/wiki/List_of_UFO_religions",
+    "https://psyche.co/ideas/ufo-belief-is-a-modern-outlet-for-ancient-spiritual-yearnings",
+    "http://www.wikidata.org/entity/Q1784735",
+    "https://snl.no/UFO-religiøsitet",
+    "http://purl.obolibrary.org/obo/GSSO_010042",
+    "https://hackerone.com/brave"
+  ],
+  "last_run": "2026-07-07T04:40:50.765889+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}
