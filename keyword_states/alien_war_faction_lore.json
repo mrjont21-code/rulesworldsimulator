@@ -1,0 +1,32 @@
+{
+  "keyword": "alien war faction lore",
+  "normalized": "alien_war_faction_lore",
+  "total_links_found": 20,
+  "links_scraped": 0,
+  "scraped_urls": [],
+  "found_urls": [
+    "https://warhammerguild.com/lore/all-warhammer-40k-factions/",
+    "https://avp.fandom.com/wiki/Union_of_Progressive_Peoples",
+    "https://www.halopedia.org/Covenant",
+    "https://wargamesatlantic.com/community/xenforum/topic/84960/lets-talk-factions-speculation",
+    "https://wiki.star-conflict.com/index.php?title=Factions",
+    "https://wiki.hoodedhorse.com/Terra_Invicta/Aliens",
+    "https://hoodedhorse.com/wiki/Terra_Invicta/Aliens",
+    "https://hoodedhorse.com/wiki/Terra_Invicta/Factions",
+    "https://en.wikibooks.org/wiki/Civ/Sid_Meier's_Alpha_Centauri/The_Alien_Crossfire_Factions",
+    "https://wiki.hoodedhorse.com/Terra_Invicta/Factions",
+    "https://warframe.fandom.com/wiki/Factions",
+    "https://wiki.hoodedhorse.com/Terra_Invicta/Diplomacy",
+    "https://wiki.hoodedhorse.com/Terra_Invicta/Aliens/Lore",
+    "https://avp.fandom.com/wiki/Category:Human_organisations",
+    "https://40klorevault.com/lore/factions",
+    "https://steamcommunity.com/app/1332760/discussions/0/3820781363198466570/",
+    "https://hackerone.com/brave",
+    "https://status.brave.app/",
+    "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light",
+    "https://mastodon.social/@StartpageSearch"
+  ],
+  "last_run": "2026-07-08T03:00:10.778908+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}

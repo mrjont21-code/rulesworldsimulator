@@ -1,0 +1,14 @@
+{
+  "keyword": "alien society class conflict fiction",
+  "normalized": "alien_society_class_conflict_fiction",
+  "total_links_found": 2,
+  "links_scraped": 0,
+  "scraped_urls": [],
+  "found_urls": [
+    "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light",
+    "https://mastodon.social/@StartpageSearch"
+  ],
+  "last_run": "2026-07-08T04:57:53.531054+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}

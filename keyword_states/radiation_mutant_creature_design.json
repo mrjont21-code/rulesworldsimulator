@@ -1,0 +1,28 @@
+{
+  "keyword": "radiation mutant creature design",
+  "normalized": "radiation_mutant_creature_design",
+  "total_links_found": 13,
+  "links_scraped": 2,
+  "scraped_urls": [
+    "https://conworld.fandom.com/wiki/Creatures_of_Irradiated_Earth",
+    "https://powerlisting.fandom.com/wiki/Trait:Radiation_Induced_Mutation"
+  ],
+  "found_urls": [
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/NuclearMutant",
+    "https://writing.stackexchange.com/questions/52479/making-the-mutants-in-my-setting-more-unique",
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/RadiationImmuneMutants",
+    "https://conworld.fandom.com/wiki/Creatures_of_Irradiated_Earth",
+    "https://www.d20pfsrd.com/bestiary/monster-listings/templates/mutant-creature-cr-1/",
+    "https://world.aigamemaster.app/compendium/apocalypse/radiation-scavenger-20219/",
+    "https://powerlisting.fandom.com/wiki/Trait:Radiation_Induced_Mutation",
+    "https://www.thoughtco.com/chernobyl-animal-mutations-4155348",
+    "https://hackerone.com/brave",
+    "https://status.brave.app/",
+    "https://chrome.google.com/webstore/detail/startpage-%E2%80%94-private-searc/fgmjlmbojbkmdpofahffgcpkhkngfpef",
+    "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light",
+    "https://mastodon.social/@StartpageSearch"
+  ],
+  "last_run": "2026-07-08T02:58:54.327240+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}

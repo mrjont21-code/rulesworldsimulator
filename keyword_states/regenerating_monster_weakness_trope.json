@@ -1,0 +1,33 @@
+{
+  "keyword": "regenerating monster weakness trope",
+  "normalized": "regenerating_monster_weakness_trope",
+  "total_links_found": 18,
+  "links_scraped": 2,
+  "scraped_urls": [
+    "https://allthetropes.org/wiki/Tomie",
+    "https://tropedia.fandom.com/wiki/Unstoppable_Rage"
+  ],
+  "found_urls": [
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/MonstrosityEqualsWeakness",
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/AntiRegeneration",
+    "https://rpg.stackexchange.com/questions/26938/what-ranked-edge-is-fast-regeneration-equivalent-to",
+    "https://allthetropes.org/wiki/Tomie",
+    "https://tvtropes.org/pmwiki/pmwiki.php/VideoGame/MonsterSanctuary",
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/SlidingScaleOfUndeadRegeneration",
+    "https://allthetropes.org/wiki/Good_Thing_You_Can_Heal",
+    "https://dnd.sinister.net/oops-theyre-regenerating/",
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/GradualRegeneration",
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/FromASingleCell",
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/PerpetualMotionMonster",
+    "https://tvtropes.org/pmwiki/pmwiki.php/Main/RegeneratingMana",
+    "https://tropedia.fandom.com/wiki/Unstoppable_Rage",
+    "https://tvtropes.org/pmwiki/pmwiki.php/YMMV/MonsterHunterStories2WingsOfRuin",
+    "https://hackerone.com/brave",
+    "https://status.brave.app/",
+    "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light",
+    "https://mastodon.social/@StartpageSearch"
+  ],
+  "last_run": "2026-07-08T03:12:02.413674+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}

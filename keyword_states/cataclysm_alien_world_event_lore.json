@@ -1,0 +1,14 @@
+{
+  "keyword": "cataclysm alien world event lore",
+  "normalized": "cataclysm_alien_world_event_lore",
+  "total_links_found": 2,
+  "links_scraped": 0,
+  "scraped_urls": [],
+  "found_urls": [
+    "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light",
+    "https://mastodon.social/@StartpageSearch"
+  ],
+  "last_run": "2026-07-08T05:00:03.363916+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}

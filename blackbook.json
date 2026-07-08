@@ -62,9 +62,10 @@
     "skill": "HTTP_SOUP"
   },
   "pmc.ncbi.nlm.nih.gov": {
-    "failures": 4,
+    "failures": 5,
     "status": "banned",
-    "skill": "HTTP_SOUP"
+    "skill": "HTTP_SOUP",
+    "banned_until": "2026-07-15T02:47:49.578615+00:00"
   },
   "link.springer.com": {
     "failures": 0,
@@ -212,9 +213,10 @@
     "skill": "HTTP_SOUP"
   },
   "tvtropes.org": {
-    "failures": 0,
-    "status": "active",
-    "skill": "PLAYWRIGHT"
+    "failures": 8,
+    "status": "banned",
+    "skill": "PLAYWRIGHT",
+    "banned_until": "2026-07-15T03:12:02.317270+00:00"
   },
   "amphiterra.weebly.com": {
     "failures": 0,
@@ -419,7 +421,7 @@
     "skill": "PLAYWRIGHT"
   },
   "tropedia.fandom.com": {
-    "failures": 0,
+    "failures": 2,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -438,7 +440,7 @@
   "m.webnovel.com": {
     "failures": 0,
     "status": "active",
-    "skill": "HTTP"
+    "skill": "PLAYWRIGHT"
   },
   "best-sci-fi-books.com": {
     "failures": 0,
@@ -658,7 +660,7 @@
     "banned_until": "2026-07-10T05:49:55.722354+00:00"
   },
   "writing.stackexchange.com": {
-    "failures": 1,
+    "failures": 2,
     "status": "active",
     "skill": "PLAYWRIGHT"
   },
@@ -851,9 +853,10 @@
     "banned_until": "2026-07-13T04:41:58.217913+00:00"
   },
   "wiki.hoodedhorse.com": {
-    "failures": 1,
-    "status": "active",
-    "skill": "HTTP"
+    "failures": 5,
+    "status": "banned",
+    "skill": "HTTP",
+    "banned_until": "2026-07-15T03:02:33.512363+00:00"
   },
   "www.imagineforest.com": {
     "failures": 0,
@@ -876,9 +879,9 @@
     "skill": "PLAYWRIGHT"
   },
   "avp.fandom.com": {
-    "failures": 0,
+    "failures": 2,
     "status": "active",
-    "skill": "HTTP_SOUP"
+    "skill": "PLAYWRIGHT"
   },
   "www.verduria.org": {
     "failures": 0,
@@ -1000,5 +1003,365 @@
     "failures": 0,
     "status": "active",
     "skill": "HTTP_SOUP"
+  },
+  "www.nema.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "onlinelibrary.wiley.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "content.ampp.org": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "wiki.cavesofqud.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "info.hephaistos.online": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "wiki.travellerrpg.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "corrosion-doctors.org": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.materialsperformance.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "e-labsinc.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.asminternational.org": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.icorr.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "inspenet.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "swse.fandom.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.d20pfsrd.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "world.aigamemaster.app": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.thoughtco.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "conworld.fandom.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "hoodedhorse.com": {
+    "failures": 2,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "en.wikibooks.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.halopedia.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "wargamesatlantic.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "wiki.star-conflict.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "steamcommunity.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "warhammerguild.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "warframe.fandom.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "40klorevault.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "rpg.stackexchange.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "dnd.sinister.net": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "treknews.net": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.resetera.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "lareviewofbooks.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.newscientist.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.physicsforums.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "forums.xkcd.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "supernova.eso.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.sustainability-times.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "oceanexplorer.noaa.gov": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "oceana.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.kpbs.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.caltech.edu": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "news.mongabay.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "schmidtocean.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "oceantoday.noaa.gov": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "learningenglish.voanews.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "brightside.me": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "a-z-animals.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.sciencefriday.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.whoi.edu": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.centauri-dreams.org": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "macmcentire.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.denofgeek.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "eldenring.wiki.fextralife.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.dreamstime.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "stock.adobe.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "makeagif.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "www.freepik.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "eldenring.fandom.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "old-2021-movie.fandom.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "rickandmorty.fandom.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.nytimes.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "www.fanfiction.net": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "fawesome.tv": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.wattpad.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "blogs.kent.ac.uk": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.laughingplace.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "theconversation.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "www.magicspoiler.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "PLAYWRIGHT"
+  },
+  "lytrules.substack.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "reactormag.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "marvelcinematicuniverse.fandom.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
+  },
+  "superpowerfanon.fandom.com": {
+    "failures": 0,
+    "status": "active",
+    "skill": "HTTP_SOUP"
+  },
+  "disney.fandom.com": {
+    "failures": 1,
+    "status": "active",
+    "skill": "HTTP"
   }
 }

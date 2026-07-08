@@ -1,7 +1,7 @@
 {
   "keyword": "alien civilization technology design",
   "normalized": "alien_civilization_technology_design",
-  "total_links_found": 20,
+  "total_links_found": 22,
   "links_scraped": 4,
   "scraped_urls": [
     "https://en.wikipedia.org/wiki/Fermi_paradox",
@@ -31,7 +31,7 @@
     "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light",
     "https://mastodon.social/@StartpageSearch"
   ],
-  "last_run": "2026-07-07T03:48:14.261046+00:00",
-  "run_count": 1,
-  "is_exhausted": false
+  "last_run": "2026-07-08T05:51:25.157280+00:00",
+  "run_count": 2,
+  "is_exhausted": true
 }

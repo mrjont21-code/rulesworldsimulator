@@ -1,0 +1,33 @@
+{
+  "keyword": "silicon based lifeform physiology fiction",
+  "normalized": "silicon_based_lifeform_physiology_fiction",
+  "total_links_found": 19,
+  "links_scraped": 1,
+  "scraped_urls": [
+    "https://www.daviddarling.info/encyclopedia/S/siliconlife.html"
+  ],
+  "found_urls": [
+    "https://treknews.net/2011/09/04/science-fiction-or-science-fact-silicon-based-alien-life/",
+    "https://www.resetera.com/threads/silicon-based-life-wtf.30154/",
+    "https://www.pbs.org/video/what-if-alien-life-were-silcon-based-xijric/",
+    "https://m.webnovel.com/ask/t348199611726951",
+    "https://www.nbcnews.com/mach/science/silicon-based-life-may-be-more-just-science-fiction-n748266",
+    "https://www.smithsonianmag.com/air-space-magazine/silicon-based-life-staple-science-fiction-may-not-be-likely-after-all-180975083/",
+    "https://www.scientificamerican.com/article/could-silicon-be-the-basi/",
+    "https://reasons.org/explore/blogs/the-cells-design/could-life-be-based-on-silicon",
+    "https://www.thecompanion.app/star-trek-the-science-of-the-crystalline-entity/",
+    "https://tropedia.fandom.com/wiki/Silicon-Based_Life",
+    "https://en.wikipedia.org/wiki/Hypothetical_types_of_biochemistry",
+    "https://www.daviddarling.info/encyclopedia/S/siliconlife.html",
+    "https://memory-alpha.fandom.com/wiki/Silicon-based_lifeform",
+    "https://medium.com/@Merrysci/how-a-silicon-based-life-would-look-like-ee2a9ec181dd",
+    "https://hackerone.com/brave",
+    "https://status.brave.app/",
+    "https://chrome.google.com/webstore/detail/startpage-%E2%80%94-private-searc/fgmjlmbojbkmdpofahffgcpkhkngfpef",
+    "https://www.startmail.com/en/startpage/?pk_campaign=startpage?t=light",
+    "https://mastodon.social/@StartpageSearch"
+  ],
+  "last_run": "2026-07-08T03:48:51.493370+00:00",
+  "run_count": 1,
+  "is_exhausted": false
+}
