@@ -51,11 +51,19 @@ jobs:
       # chạy (main.py là nơi DUY NHẤT load/save — xem docstring main.py).
       # Runner GitHub Actions ephemeral nên phải cache file này qua actions/cache,
       # khóa cache cố định + luôn restore-and-resave (không dùng hash key).
+      # [RESET 2026-07-10] Đổi v1 -> v2: blackbook.json cũ (cache
+      # repo1-blackbook-v1) đang chứa trạng thái "banned" GIẢ cho
+      # DuckDuckGo/Brave/Startpage do bug get_stealth_headers() ở
+      # t0_search.py (đã fix). Bump key để lần chạy này CACHE-MISS có
+      # chủ đích, main.py tự tạo blackbook rỗng (xem load_blackbook() —
+      # không thấy file -> trả schema rỗng mặc định), không cần xoá cache
+      # cũ qua API. Có thể đổi lại "repo1-blackbook-v1" sau khi cache v2
+      # đã chạy ổn định vài lần, hoặc giữ nguyên v2 vĩnh viễn cũng được.
       - name: Restore blackbook.json (round-robin/dedup state)
         uses: actions/cache/restore@v4
         with:
           path: blackbook.json
-          key: repo1-blackbook-v1
+          key: repo1-blackbook-v2
 
       - name: Run harvest cycle (T0 -> T5)
         env:
@@ -84,7 +92,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: blackbook.json
-          key: repo1-blackbook-v1
+          key: repo1-blackbook-v2
 
       - name: Upload run log as artifact
         if: always()
