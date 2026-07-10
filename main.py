@@ -1,318 +1,383 @@
 """
-MAIN: Orchestrator - TUẦN TỰ TỪNG KEYWORD
-Flow: Keyword A → Search → Classify → Scrape → Normalize → Dedup → Upload → Keyword B → ...
+MAIN — Orchestrator Repo 1 (Visual-First Design Pattern Harvester)
+=====================================================================
+[CẬP NHẬT — spec §14 (rewrite trước)]
+- Bỏ import t6_world_forge.py / t6_rule_engine_bridge.py / rule_engine.py
+  khỏi luồng orchestrate chính (đã đánh dấu OUT_OF_SCOPE_REPO1).
+- Orchestrate đúng thứ tự: t0 -> t1 -> t2 -> summarizer -> t3 -> t4 -> t5.
+
+[CẬP NHẬT — SPEC_FIX_P1_ARCHITECTURE, Vấn đề 1]
+Trước đây `run_search_pipeline()` (t0) và `run_scrape_pipeline()` (t2) mỗi
+hàm tự load/save "blackbook.json" riêng -> race giữa hai lần ghi, T2 có thể
+ghi đè state mà T0 vừa cập nhật (mất dedup keyword, mất round-robin cursor).
+
+Fix: `main.py` là nơi DUY NHẤT load/save `blackbook.json` (qua
+`load_blackbook()`/`save_blackbook()`), load đúng 1 lần đầu run, truyền
+CÙNG 1 object `blackbook` (dependency injection) vào cả `run_search_pipeline`
+và `run_scrape_pipeline`, hai hàm này chỉ được MUTATE IN-PLACE, không tự mở
+file. Ghi file đúng 1 lần cuối run, trong khối `finally` để không mất tiến
+độ nếu có exception giữa chừng.
+
+[CẬP NHẬT — SPEC_FIX_P1_ARCHITECTURE, Vấn đề 2]
+Bước T3 giờ gọi `t3_normalize.run_gate_5()` (thay vì `run_normalize()`) để
+lấy thêm `quality_gate_report` phục vụ observability (mục 105 tài liệu gốc)
+— report này đã được `t3_normalize.py` tự log JSON, `main.py` chỉ cần đọc
+lại `status`/`needs_more_views` để tổng hợp thống kê chu kỳ.
 """
+from __future__ import annotations
+
+import asyncio
+import json
+import logging
 import os
-import re
 import sys
 import time
-import logging
 import uuid
-import json
-import argparse
 from datetime import datetime, timezone
+from typing import List, Optional
 
-from config import settings
-from t0_search import run_t0_single_keyword
-from t1_classify import run_t1
-from t2_scrape import run_t2
-from t3_normalize import run_t3
-from t4_deduplicate import run_t4
-from t5_upload import run_t5
-from t6_rule_engine_bridge import forge_and_validate_uploaded_rules
-from stealth import keyword_break
-from mongo_shared import close_shared_client
-
-MAX_LOOPS = int(os.getenv("MAX_LOOPS", "8"))
+import config
+from config import get_form_fields
+from t0_search import run_search_pipeline
+from t1_classify import classify_and_rank
+from t2_scrape import run_scrape_pipeline
+from summarizer import run_summarizer
+from t3_normalize import run_gate_5
+from t4_deduplicate import deduplicate
+from t4_5_library_distill import run_library_distill
+from t5_upload import run_upload
+from mongo_shared import close_shared_client, get_shared_db
+from rule_library import load_active_rules
+from core.budget_manager import BudgetManager
+from core.logger import PipelineLogger
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - [%(name)s] %(message)s',
-    datefmt='%H:%M:%S',
-    stream=sys.stderr
+    format="%(asctime)s - [%(name)s] %(message)s",
+    datefmt="%H:%M:%S",
+    stream=sys.stderr,
 )
 logger = logging.getLogger("MAIN")
 
-# ============================================================
-# CHECKPOINT: cơ chế phục hồi thô sơ, chống mất tiến độ khi
-# tiến trình bị dừng giữa chừng ở T2 (scrape - chậm 8-20s/link).
-# Mỗi keyword có 1 file JSON riêng trong data/checkpoints/.
-# ============================================================
-CHECKPOINT_DIR = os.path.join("data", "checkpoints")
 
-
-def _checkpoint_path(keyword: str) -> str:
-    """Chuẩn hoá keyword thành tên file an toàn (giữ ký tự chữ/số/gạch dưới)."""
-    safe = re.sub(r'[^\w\-]+', '_', keyword.strip(), flags=re.UNICODE)
-    return os.path.join(CHECKPOINT_DIR, f"{safe}.json")
-
-
-def save_checkpoint(keyword: str, classified_links: list) -> None:
-    """Ghi list links đã classify (sau T1) vào file checkpoint của keyword."""
-    os.makedirs(CHECKPOINT_DIR, exist_ok=True)
-    path = _checkpoint_path(keyword)
-    try:
-        with open(path, 'w', encoding='utf-8') as f:
-            json.dump(
-                {"keyword": keyword, "classified_links": classified_links},
-                f, ensure_ascii=False, indent=2
-            )
-        logger.info(f"💾 Đã lưu checkpoint '{keyword}' ({len(classified_links)} links)")
-    except OSError as e:
-        logger.error(f"❌ Lỗi lưu checkpoint '{keyword}': {e}")
-
-
-def load_checkpoint(keyword: str):
-    """Đọc checkpoint của keyword. Trả về list nếu có, None nếu không có/lỗi."""
-    path = _checkpoint_path(keyword)
+# =============================================================================
+# [SPEC_FIX_P1 — Vấn đề 1] blackbook.json — load/save DUY NHẤT ở main.py
+# =============================================================================
+def load_blackbook(path: str) -> dict:
+    """Đọc JSON, nếu không tồn tại -> trả về schema rỗng mặc định (không
+    side-effect ghi file)."""
     if not os.path.exists(path):
-        return None
+        return {"keywords": {}, "scrape_state": {}, "version": 1}
     try:
-        with open(path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        return data.get("classified_links")
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
     except (json.JSONDecodeError, OSError) as e:
-        logger.warning(f"⚠️ Checkpoint '{keyword}' đọc lỗi ({e}), bỏ qua")
-        return None
+        logger.warning(f"⚠️ [MAIN] '{path}' đọc lỗi ({e}) — dùng schema rỗng mặc định.")
+        return {"keywords": {}, "scrape_state": {}, "version": 1}
 
 
-def clear_checkpoint(keyword: str) -> None:
-    """Xóa file checkpoint của keyword (khi đã xử lý xong hoặc không cần nữa)."""
-    path = _checkpoint_path(keyword)
-    if os.path.exists(path):
-        try:
-            os.remove(path)
-            logger.info(f"🧹 Đã xóa checkpoint '{keyword}'")
-        except OSError as e:
-            logger.error(f"❌ Lỗi xóa checkpoint '{keyword}': {e}")
-
-
-def _find_pending_checkpoint():
-    """
-    Quét data/checkpoints/ tìm phiên dở dang.
-    Lưu ý: keyword chỉ được T0 xác định SAU khi chạy (round-robin nội bộ),
-    nên không thể "load_checkpoint(keyword) trước run_t0" theo đúng nghĩa đen -
-    thay vào đó ta quét file để biết keyword nào đang dang dở, nếu có.
-    Trả về (keyword, classified_links) hoặc None.
-    """
-    if not os.path.isdir(CHECKPOINT_DIR):
-        return None
-    for fname in sorted(os.listdir(CHECKPOINT_DIR)):
-        if not fname.endswith(".json"):
-            continue
-        fpath = os.path.join(CHECKPOINT_DIR, fname)
-        try:
-            with open(fpath, 'r', encoding='utf-8') as f:
-                data = json.load(f)
-            keyword = data.get("keyword")
-            classified_links = data.get("classified_links")
-            if keyword and classified_links is not None:
-                return keyword, classified_links
-        except (json.JSONDecodeError, OSError):
-            continue
-    return None
-
-
-def load_keywords() -> list[str]:
-    """Load 35 keywords"""
-    path = settings.KEYWORDS_FILE
-    if not os.path.exists(path):
-        logger.error(f"Không tìm thấy {path}")
-        sys.exit(1)
-    with open(path, 'r', encoding='utf-8') as f:
-        return json.load(f).get("keywords", [])
-
-
-def process_single_keyword(keywords: list[str], run_id: str, stats: dict) -> bool:
-    """
-    Xử lý 1 keyword hoàn chỉnh: Search → Classify → Scrape → Normalize → Dedup → Upload
-    Trả về True nếu xử lý thành công, False nếu hết keyword/thời gian
-    """
-    # === CHECKPOINT: kiểm tra phiên dở dang trước khi chạy T0 ===
-    pending = _find_pending_checkpoint()
-
-    if pending is not None:
-        keyword, classified = pending
-        stats["keywords_used"].append(keyword)
-        logger.info("🔄 Phục hồi Checkpoint, bỏ qua T0 & T1")
-    else:
-        # === T0: Search 1 keyword ===
-        result = run_t0_single_keyword(keywords)
-        if result is None:
-            return False
-
-        keyword, links, state = result
-        stats["keywords_used"].append(keyword)
-        stats["links_found"] += len(links)
-
-        # === T1: Classify ===
-        classified = run_t1(links)
-
-        # Lưu checkpoint ngay sau T1, trước khi vào T2 (chậm, dễ bị dừng giữa chừng)
-        save_checkpoint(keyword, classified)
-
-    # === T2: Scrape (CHẬM - 8-20s/link) ===
-    scraped = run_t2(classified)
-    stats["links_scraped"] += len(scraped)
-    
-    if not scraped:
-        clear_checkpoint(keyword)
-        return True  # Vẫn trả về True để chuyển keyword khác
-    
-    # === T3: Normalize ===
-    normalized = run_t3(scraped)
-    stats["contents_validated"] += len(normalized)  # T3 output = số bài đạt chuẩn
-
-    # === T4: Deduplicate & Save ===
-    unique = run_t4(normalized, run_id)
-    stats["duplicates_removed"] += len(normalized) - len(unique)
-
-    # === T5: Upload ===
-    # T5 sẽ cộng dồn rules_uploaded nội bộ; không cộng thêm ở đây tránh double-count
-    run_t5(unique, run_id, stats)
-
-    # === CHECKPOINT: T5 thành công -> xóa checkpoint, không cần phục hồi nữa ===
-    clear_checkpoint(keyword)
-
-    # === T6 -> rule_engine: Forge Blueprint & kiểm tra tính nhất quán ===
-    # BẮT BUỘC chạy sau khi T5 hoàn thành, trước khi vòng lặp keyword kết
-    # thúc (xem t6_rule_engine_bridge.py để biết chi tiết adapter và các
-    # giới hạn đã biết giữa 2 bộ schema khác nhau của T6 và rule_engine).
-    forge_and_validate_uploaded_rules(unique, stats)
-
-    return True
-
-
-def run_pomodoro_loop():
-    """Loop Pomodoro với xử lý tuần tự từng keyword"""
-    keywords = load_keywords()
-    logger.info("🎯 RULESWORLD SCRAPER - ANTI-BAN MODE")
-    logger.info(f"   Keywords: {len(keywords)}")
-    logger.info(f"   Delay/req: {settings.MIN_REQUEST_DELAY}-{settings.MAX_REQUEST_DELAY}s")
-    logger.info(f"   Break/kw: {settings.MIN_KEYWORD_BREAK}-{settings.MAX_KEYWORD_BREAK}s")
-    logger.info(f"   Max loops: {MAX_LOOPS}")
-    logger.info("")
-    
-    session_count = 0
-    
+def save_blackbook(path: str, blackbook: dict) -> None:
+    """Ghi atomic: viết ra file .tmp rồi os.replace() để tránh corrupt khi
+    crash giữa chừng."""
+    tmp = f"{path}.tmp"
     try:
-        while session_count < MAX_LOOPS:
-            session_count += 1
-            run_id = f"run_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
-            session_start = time.time()
-            
-            logger.info("\n" + "🟢" * 40)
-            logger.info(f"📝 SESSION #{session_count}/{MAX_LOOPS}")
-            logger.info(f"   Run ID: {run_id}")
-            logger.info(f"   Start: {datetime.now().strftime('%H:%M:%S')}")
-            logger.info("🟢" * 40 + "\n")
-            
-            stats = {
-                "started_at": datetime.now(timezone.utc).isoformat(),
-                "keywords_used": [],
-                "links_found": 0,
-                "links_scraped": 0,
-                "contents_validated": 0,
-                "duplicates_removed": 0,
-                "rules_uploaded": 0,
-                "rules_attempted": 0,
-                "blueprints_forged": 0,
-                "blueprints_validation_errors": 0,
-                "blueprints_validation_warnings": 0,
-                "blueprints_validation_skipped": 0,
-            }
-            
-            # XỬ LÝ TUẦN TỰ TỪNG KEYWORD
-            while True:
-                # Check thời gian 25 phút
-                elapsed = time.time() - session_start
-                if elapsed >= (settings.WORK_MINUTES * 60 - 30):
-                    logger.info(f"\n⏰ Hết 25 phút (đã dùng {elapsed/60:.1f} phút)")
-                    break
-                
-                # Xử lý 1 keyword
-                success = process_single_keyword(keywords, run_id, stats)
-                
-                if not success:
-                    logger.info("🏁 Hết keyword hoặc không tìm được link mới")
-                    break
-                
-                # NGHỈ DÀI giữa các keywords
-                keyword_break(
-                    min_sec=settings.MIN_KEYWORD_BREAK,
-                    max_sec=settings.MAX_KEYWORD_BREAK
-                )
-            
-            # Session summary
-            stats["duration_seconds"] = time.time() - session_start
-            logger.info("\n" + "=" * 80)
-            logger.info(f"📊 SESSION #{session_count} SUMMARY")
-            logger.info("=" * 80)
-            logger.info(f"   Duration:    {stats['duration_seconds']/60:.1f} phút")
-            logger.info(f"   Keywords:    {len(stats['keywords_used'])}")
-            logger.info(f"   Links:       {stats['links_found']} found → {stats['links_scraped']} scraped")
-            logger.info(f"   Contents:    {stats['contents_validated']} valid ({stats['duplicates_removed']} dup)")
-            logger.info(
-                f"   Blueprints:  {stats['blueprints_forged']} forged "
-                f"({stats['blueprints_validation_errors']} lỗi, "
-                f"{stats['blueprints_validation_warnings']} cảnh báo, "
-                f"{stats['blueprints_validation_skipped']} bỏ qua)"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(blackbook, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, path)
+    except OSError as e:
+        logger.error(f"❌ [MAIN] Không thể ghi blackbook '{path}': {e}")
+
+
+def _load_existing_visual_ids() -> dict:
+    """Nạp visual_id đã tồn tại trong DB để t4_deduplicate.py biết đâu là
+    document mới, đâu là document cần merge/flag review."""
+    existing: dict = {}
+    db = get_shared_db()
+    if db is None:
+        return existing
+
+    try:
+        coll = db[config.MONGO_TARGET_COLLECTIONS["visual_blueprint_collection"]]
+        for doc in coll.find({}, {"visual_id": 1, "_id": 0}):
+            visual_id = doc.get("visual_id")
+            if visual_id:
+                existing[visual_id] = {"blueprint": doc}
+    except Exception as e:
+        logger.warning(f"⚠️ [MAIN] Không thể nạp existing visual_id từ DB: {e}")
+
+    return existing
+
+
+# =============================================================================
+# [MỚI — Progressive Gap Filling, SPEC_PROGRESSIVE_GAP_FILLING_T0 §1]
+# =============================================================================
+def _load_pending_fields_from_db() -> Optional[List[str]]:
+    """Quét `visual_blueprint_collection`, gom TẤT CẢ dot-path field đang
+    nằm trong `metadata.gap_filling_status.pending_fields` của MỌI
+    document có mảng này không rỗng.
+
+    Trả về:
+        - List[str] rỗng-đã-loại-trùng nếu có ít nhất 1 pending field.
+        - None nếu DB rỗng, hoặc không document nào có pending_fields,
+          hoặc kết nối DB thất bại (fail-safe -> để main.py tự quyết
+          định fallback full-scan, KHÔNG tự ý trả [] gây nhầm lẫn với
+          "đã đầy đủ" ở bước (4)).
+    """
+    db = get_shared_db()
+    if db is None:
+        logger.warning(
+            "⚠️ [MAIN] Không kết nối được MongoDB khi load pending_fields — "
+            "fallback full-scan 29 field."
+        )
+        return None
+
+    try:
+        coll = db[config.MONGO_TARGET_COLLECTIONS["visual_blueprint_collection"]]
+
+        # Chỉ lấy document CÓ mảng pending_fields không rỗng — dùng
+        # $exists + $ne: [] ngay ở tầng query (không kéo cả collection
+        # về rồi filter bằng Python, tránh tốn băng thông/RAM khi DB lớn).
+        cursor = coll.find(
+            {
+                "metadata.gap_filling_status.pending_fields": {
+                    "$exists": True,
+                    "$ne": [],
+                }
+            },
+            {"metadata.gap_filling_status.pending_fields": 1, "_id": 0},
+        )
+
+        pending_set: set = set()
+        doc_count = 0
+        for doc in cursor:
+            doc_count += 1
+            fields = (
+                doc.get("metadata", {})
+                .get("gap_filling_status", {})
+                .get("pending_fields", [])
             )
-            logger.info("=" * 80)
-            
-            # Save run log
-            run_t5([], run_id, stats)
-            
-            # Nghỉ Pomodoro nếu chưa phải vòng cuối
-            if session_count < MAX_LOOPS:
-                break_sec = settings.BREAK_MINUTES * 60
-                logger.info("\n" + "🔴" * 40)
-                logger.info(f"☕ POMODORO BREAK - {settings.BREAK_MINUTES} phút")
-                next_t = datetime.fromtimestamp(time.time() + break_sec).strftime('%H:%M:%S')
-                logger.info(f"   Next session: {next_t}")
-                logger.info("🔴" * 40 + "\n")
-                time.sleep(break_sec)
-            else:
-                logger.info("\n🏁 ĐẠT GIỚI HẠN VÒNG LẶP")
-                
-    except KeyboardInterrupt:
-        logger.info("\n🛑 Dừng bởi người dùng")
+            pending_set.update(f for f in fields if f)
+
+    except Exception as e:
+        logger.warning(
+            f"⚠️ [MAIN] Lỗi truy vấn pending_fields từ DB: {e} — "
+            "fallback full-scan 29 field."
+        )
+        return None
+
+    if doc_count == 0:
+        # Không có document nào từng khai báo pending_fields không rỗng.
+        # Có 2 khả năng: (a) DB hoàn toàn rỗng (Run 1) -> full-scan là
+        # đúng, hoặc (b) DB có document nhưng TẤT CẢ đã pending_fields=[]
+        # (đầy đủ 100%) -> phải phân biệt để quyết định dừng hẳn (mục 4).
+        # -> _load_pending_fields_from_db() không tự đủ thông tin phân
+        # biệt (a) vs (b); main.py sẽ tự kiểm tra thêm qua
+        # _visual_blueprint_collection_is_empty().
+        return None
+
+    pending_fields = sorted(pending_set)
+    logger.info(
+        f"🔍 [MAIN] Tìm thấy {len(pending_fields)} pending field từ "
+        f"{doc_count} document trong visual_blueprint_collection."
+    )
+    return pending_fields
 
 
-def run_single_session():
-    """Chạy 1 session (test)"""
-    global MAX_LOOPS
-    MAX_LOOPS = 1
-    keywords = load_keywords()
-    
-    run_id = f"test_{uuid.uuid4().hex[:8]}"
-    stats = {
-        "started_at": datetime.now(timezone.utc).isoformat(),
-        "keywords_used": [], "links_found": 0, "links_scraped": 0,
-        "contents_validated": 0, "duplicates_removed": 0, "rules_uploaded": 0,
-        "rules_attempted": 0, "blueprints_forged": 0,
-        "blueprints_validation_errors": 0, "blueprints_validation_warnings": 0,
-        "blueprints_validation_skipped": 0,
-    }
-    
-    process_single_keyword(keywords, run_id, stats)
-    
-    logger.info(f"\n📊 Test hoàn tất: {stats}")
+def _visual_blueprint_collection_is_empty() -> bool:
+    """True nếu collection visual_blueprint_collection chưa có document
+    nào (Run 1 / cold-start thật sự)."""
+    db = get_shared_db()
+    if db is None:
+        return True  # fail-safe: coi như rỗng -> full-scan, không dừng nhầm
+    try:
+        coll = db[config.MONGO_TARGET_COLLECTIONS["visual_blueprint_collection"]]
+        return coll.estimated_document_count() == 0
+    except Exception:
+        return True
+
+
+async def run_pipeline_once(cfg=None) -> dict:
+    """Chạy đúng 1 chu kỳ đầy đủ của Repo 1: t0 -> t1 -> t2 -> summarizer
+    -> t3 -> t4 -> t5. Trả về Upload Report tổng hợp."""
+    cfg = cfg or config
+
+    run_id = f"run_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:6]}"
+    start = time.time()
+
+    # [MỚI] Khởi tạo Budget và Logger — 1 lần duy nhất / chu kỳ, truyền
+    # xuống tất cả agent (dependency injection, giống pattern blackbook).
+    budget = BudgetManager()
+    obs = PipelineLogger(run_id=run_id, budget=budget)
+
+    obs.event(step="PIPELINE_START", agent="main", status="START",
+              message=f"Bắt đầu chu kỳ Repo 1 — run_id={run_id}",
+              extra={"budget_config": {
+                  "max_urls": budget.max_urls,
+                  "max_gemini_calls": budget.max_gemini_calls,
+                  "max_tokens": budget.max_tokens,
+              }})
+
+    # (1) Load blackbook MỘT lần duy nhất cho cả chu kỳ.
+    blackbook = load_blackbook(cfg.BLACKBOOK_PATH)
+
+    # (2) [MỚI — Progressive Gap Filling] Load pending_fields TRƯỚC T0.
+    pending_fields = _load_pending_fields_from_db()
+
+    if pending_fields is None and not _visual_blueprint_collection_is_empty():
+        # DB có document nhưng KHÔNG document nào còn pending_fields ->
+        # Fiction Knowledge Base đã đầy đủ 100%. Dừng hẳn, không phí T0->T5.
+        obs.event(step="PIPELINE_START", agent="main", status="DONE",
+                  message="Fiction Knowledge Base đã đầy. Dừng pipeline.")
+        logger.info("✅ [MAIN] Fiction Knowledge Base đã đầy. Dừng pipeline.")
+        return {"new": 0, "merged": 0, "rejected": 0, "errors": [], "skipped_reason": "kb_full"}
+
+    total_fields = len(
+        get_form_fields("form_1_planet_foundation")
+        + get_form_fields("form_2_civilization_layer")
+    )
+    if pending_fields:
+        skipped = total_fields - len(pending_fields)
+        logger.info(
+            f"🎯 [MAIN] Gap-Aware Mode: Chỉ tìm {len(pending_fields)} "
+            f"field đang thiếu, bỏ qua {skipped} field đã đầy."
+        )
+        obs.event(step="T0_SEARCH", agent="main", status="INFO",
+                  message=(
+                      f"Gap-Aware Mode: {len(pending_fields)}/{total_fields} "
+                      f"field pending — bỏ qua {skipped} field đã đầy."
+                  ),
+                  extra={"pending_fields": pending_fields})
+    else:
+        logger.info(f"🔎 [MAIN] Full-Scan Mode: tìm toàn bộ {total_fields} field (Run 1 / cold-start).")
+
+    try:
+        # === T0: Search (blackbook injected — KHÔNG tự load/save) ===
+        search_results = await run_search_pipeline(
+            blackbook, budget=budget, obs=obs, target_fields=pending_fields,
+        )
+        obs.event(step="T0_SEARCH", agent="t0_search", status="SUCCESS",
+                  items_processed=len(search_results),
+                  message=f"T0 hoàn thành — {len(search_results)} URL.")
+
+        if not search_results:
+            obs.event(step="T0_SEARCH", agent="t0_search", status="WARNING",
+                      message="T0 không trả về URL nào — dừng chu kỳ.")
+            return {"new": 0, "merged": 0, "rejected": 0, "errors": ["t0_empty"]}
+
+        # === T1: Classify (Gate 1) ===
+        classified = classify_and_rank(search_results)
+        obs.event(step="T1_CLASSIFY", agent="t1_classify", status="SUCCESS",
+                  items_processed=len(classified),
+                  message=f"T1 hoàn thành — {len(classified)} URL qua Gate 1.")
+
+        if not classified:
+            obs.event(step="T1_CLASSIFY", agent="t1_classify", status="WARNING",
+                      message="T1 không còn URL nào sau Gate 1 — dừng chu kỳ.")
+            return {"new": 0, "merged": 0, "rejected": 0, "errors": ["t1_empty"]}
+
+        # === T2: Scrape (Gate 2, async, CÙNG object blackbook với T0) ===
+        scraped_docs = await run_scrape_pipeline(classified, blackbook, budget=budget, obs=obs)
+        obs.event(step="T2_SCRAPE", agent="t2_scrape", status="SUCCESS",
+                  items_processed=len(scraped_docs),
+                  message=f"T2 hoàn thành — {len(scraped_docs)} document qua Gate 2.")
+
+        if not scraped_docs:
+            obs.event(step="T2_SCRAPE", agent="t2_scrape", status="WARNING",
+                      message="T2 không còn document nào sau Gate 2 — dừng chu kỳ.")
+            return {"new": 0, "merged": 0, "rejected": 0, "errors": ["t2_empty"]}
+
+        # === Summarizer: Phase A + Phase B (Gate 3 + Gate 4) ===
+        # Chạy tuần tự (không async) vì Gemini Free Tier giới hạn request/phút —
+        # round-robin key trong summarizer.py đã tự chia tải, không cần thêm
+        # asyncio.gather ở tầng orchestrator (tránh spike vượt rate limit).
+        combined_outputs = []
+        total_tokens = 0
+        for doc in scraped_docs:
+            try:
+                combined = run_summarizer(doc, budget=budget, obs=obs)
+                combined_outputs.append(combined)
+                total_tokens += combined.get("_tokens_used", 0)
+            except Exception as e:
+                obs.event(step="T3_SUMMARIZE", agent="summarizer", status="ERROR",
+                          message=f"Lỗi summarizer cho 1 document: {e}")
+                continue
+
+        phase_a_ok_count = sum(1 for c in combined_outputs if c.get("phase_a_ok"))
+        obs.event(step="T3_SUMMARIZE", agent="summarizer", status="SUCCESS",
+                  items_processed=phase_a_ok_count, tokens_used=total_tokens,
+                  message=f"Summarizer hoàn thành — {phase_a_ok_count}/{len(combined_outputs)} qua Gate 3.")
+
+        # === Load Global Rule Library — 1 lần / chu kỳ, TRƯỚC vòng lặp Gate 5 ===
+        db = get_shared_db()  # đã có sẵn pattern get_shared_db() dùng cho T4 (_load_existing_visual_ids)
+        active_rules = load_active_rules(db)  # scope=None -> load TẤT CẢ rule active, filter sau
+        logger.info(f"   Rule Library — {len(active_rules)} rule active đã load.")
+
+        # === T3: Normalize (Gate 5 — run_gate_5 trả kèm quality_gate_report) ===
+        gate5_results = [run_gate_5(c, cfg, rules=active_rules) for c in combined_outputs]
+        normalized = [result for result, _report in gate5_results]
+        needs_more_views_count = sum(1 for _r, report in gate5_results if report.get("needs_more_views"))
+
+        passed_gate5 = [n for n in normalized if n.get("reject_reason") is None]
+        obs.event(step="T4_NORMALIZE", agent="t3_normalize", status="SUCCESS",
+                  items_processed=len(passed_gate5),
+                  message=(
+                      f"T3 hoàn thành — {len(passed_gate5)}/{len(normalized)} qua Gate 5 "
+                      f"({needs_more_views_count} flag needs_more_views)."
+                  ))
+
+        # === T4: Deduplicate ===
+        existing_visual_ids = _load_existing_visual_ids()
+        deduped = deduplicate(passed_gate5, existing_visual_ids)
+        obs.event(step="T5_DEDUP", agent="t4_deduplicate", status="SUCCESS",
+                  items_processed=len(deduped),
+                  message=f"T4 hoàn thành — {len(deduped)} document sau dedup.")
+
+        # === T4.5: Library Distillation (Gate 6.5) — MỚI ===
+        # Mutate in-place deduped_docs (thêm key "lib_record" vào mỗi doc).
+        # t5_upload.py sẽ đọc lib_record từ cùng 1 doc để giữ 3-phase
+        # transaction trên 1 entity (không tách list riêng).
+        deduped = run_library_distill(deduped, budget=budget, obs=obs)
+        lib_complete_count = sum(
+            1 for d in deduped if (d.get("lib_record") or {}).get("status") == "complete"
+        )
+        obs.event(
+            step="T5_5_LIBRARY_DISTILL",
+            agent="t4_5_library_distill",
+            status="SUCCESS",
+            items_processed=lib_complete_count,
+            message=(
+                f"Gate 6.5 hoàn thành — {lib_complete_count} lib_entity "
+                f"complete / {len(deduped)} document."
+            ),
+        )
+
+        # === T5: Upload (Gate 6) ===
+        report = run_upload(deduped)
+        obs.event(step="T6_UPLOAD", agent="t5_upload", status="SUCCESS",
+                  items_processed=report.get("new", 0),
+                  message=(
+                      f"T5 hoàn thành — new={report['new']}, merged={report['merged']}, "
+                      f"rejected={report['rejected']}."
+                  ))
+
+        duration = time.time() - start
+        obs.event(step="PIPELINE_DONE", agent="main", status="DONE",
+                  message=f"Chu kỳ hoàn thành sau {duration:.1f}s.",
+                  extra={"report": report, "duration_seconds": round(duration, 1)})
+        return report
+
+    finally:
+        # (4) Ghi blackbook MỘT lần, cuối run — kể cả khi có exception giữa
+        # chừng, để không mất tiến độ round-robin/dedup đã ghi nhận.
+        save_blackbook(cfg.BLACKBOOK_PATH, blackbook)
+
+
+def main() -> None:
+    try:
+        asyncio.run(run_pipeline_once())
+    finally:
+        close_shared_client()
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--loop", action="store_true", help="Chạy loop Pomodoro")
-    parser.add_argument("--once", action="store_true", help="Chạy 1 keyword (test)")
-    args = parser.parse_args()
-
-    # BUG-3 fix: đảm bảo MongoClient dùng chung (mongo_shared.py) luôn
-    # được đóng khi tiến trình kết thúc — chạy dù --loop hay --once, dù
-    # thành công hay có exception bay ra giữa chừng.
-    try:
-        if args.loop:
-            run_pomodoro_loop()
-        else:
-            run_single_session()
-    finally:
-        close_shared_client()
+    main()

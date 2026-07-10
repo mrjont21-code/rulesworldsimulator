@@ -1,121 +1,147 @@
 """
-T4: DEDUPLICATE - Bộ Lọc Trùng Lặp & Lưu JSON Local
-Yêu cầu 100% file chỉnh sửa là file code đầy đủ
-Nhiệm vụ: Đối chiếu content_hash, loại bỏ trùng lặp và lưu file JSON ra thư mục data/raw/ để GitHub commit.
+t4_deduplicate.py — Agent 5b: Dedup theo Visual Identity
+===========================================================
+[CX]
+- Dedup key CHÍNH = Visual_ID (không còn content_hash như bản cũ). Dedup
+  key PHỤ = similarity trên pre_built_prompts.full_character.
+- Không tự động merge nếu 2 document cùng visual_id nhưng nội dung prompt
+  sai khác quá lớn — phải đánh cờ "manual_review_needed" để con người review.
 """
-import os
-import json
+from __future__ import annotations
+
+import hashlib
 import logging
-from config import settings
-from mongo_shared import get_shared_db, get_existing_hashes
+from typing import Dict, List
+
+from config import DEDUP_SIMILARITY_THRESHOLD
 
 logger = logging.getLogger(__name__)
 
-class T4Deduplicate:
-    def __init__(self):
-        # BUG-3 fix: dùng client + cache hash DÙNG CHUNG cho toàn tiến
-        # trình (mongo_shared.py) thay vì mở MongoClient riêng và quét lại
-        # toàn bộ collection `world_rules` mỗi lần T4Deduplicate được khởi
-        # tạo (main.py khởi tạo lại class này cho MỖI keyword).
-        self.db = get_shared_db()
-        self.existing_hashes = get_existing_hashes()
 
-    def check_duplicates(self, normalized_data: list[dict]) -> list[dict]:
-        """Lọc ra các bản ghi mới (chưa có trong DB)"""
-        logger.info("=" * 80)
-        logger.info("🔍 T4: DEDUPLICATE DATA")
-        logger.info("=" * 80)
-        
-        new_data = []
-        duplicates_count = 0
-        
-        for item in normalized_data:
-            # Mã băm được T3 tạo ra
-            content_hash = item.get("content_hash")
-            
-            if not content_hash:
-                logger.warning("⚠️ Bản ghi không có content_hash, bỏ qua.")
+def compute_visual_id(blueprint: dict) -> str:
+    """hash(species_base.prompt_fragment + skin.prompt_fragment) ->
+    sha256 hex, rút gọn theo convention 'VB_<ENTITY>_<hash8>'."""
+    character = blueprint.get("character_blueprint", {}) or {}
+    species_base = character.get("species_base", {}) or {}
+    physical = character.get("physical_attributes", {}) or {}
+    skin = physical.get("skin", {}) or {}
+
+    seed_text = (
+        species_base.get("prompt_fragment", "") + "|" + skin.get("prompt_fragment", "")
+    )
+
+    if not seed_text.strip("|"):
+        # Fallback: nếu không có species/skin (vd entity_type=architecture),
+        # dùng toàn bộ character_blueprint + clothing_and_gear serialized.
+        seed_text = str(character) + str(blueprint.get("clothing_and_gear", {}))
+
+    digest = hashlib.sha256(seed_text.encode("utf-8")).hexdigest()[:8]
+    entity_type = blueprint.get("entity_type", "unknown").upper()
+    return f"VB_{entity_type}_{digest}"
+
+
+def compute_prompt_similarity(prompt_a: str, prompt_b: str) -> float:
+    """TF-IDF cosine similarity trên pre_built_prompts.full_character."""
+    if not prompt_a or not prompt_b:
+        return 0.0
+
+    try:
+        from sklearn.feature_extraction.text import TfidfVectorizer
+        from sklearn.metrics.pairwise import cosine_similarity
+
+        vectorizer = TfidfVectorizer().fit([prompt_a, prompt_b])
+        vectors = vectorizer.transform([prompt_a, prompt_b])
+        return float(cosine_similarity(vectors[0], vectors[1])[0][0])
+    except Exception as e:
+        logger.warning(f"⚠️ [T4] sklearn không khả dụng, fallback so khớp thô: {e}")
+        # Fallback: Jaccard similarity trên set từ.
+        set_a, set_b = set(prompt_a.lower().split()), set(prompt_b.lower().split())
+        if not set_a or not set_b:
+            return 0.0
+        return len(set_a & set_b) / len(set_a | set_b)
+
+
+def _count_completed_fields(gap_status: dict) -> int:
+    return sum(
+        1
+        for key, value in (gap_status or {}).items()
+        if key.endswith("_completed") and value is True
+    )
+
+
+def deduplicate(
+    validated_docs: List[dict], existing_visual_ids: Dict[str, dict]
+) -> List[dict]:
+    """
+    1. Với mỗi doc -> visual_id = compute_visual_id(doc["blueprint"]).
+    2. Nếu visual_id đã tồn tại: so sánh gap_filling_status, merge nếu
+       similarity đủ cao, ngược lại flag manual_review_needed.
+    3. Nếu mới -> pass thẳng, thêm vào existing_visual_ids cho batch hiện tại.
+    4. Return List[deduped_documents].
+    """
+    output: List[dict] = []
+
+    for doc in validated_docs:
+        if doc.get("reject_reason"):
+            # Document đã bị reject ở Gate 5 -> không đưa vào dedup/upload.
+            continue
+
+        blueprint = doc.get("blueprint")
+        if not blueprint:
+            continue
+
+        visual_id = compute_visual_id(blueprint)
+        doc["visual_id"] = visual_id
+        blueprint["visual_id"] = visual_id
+
+        if visual_id in existing_visual_ids:
+            existing_doc = existing_visual_ids[visual_id]
+            existing_blueprint = existing_doc.get("blueprint", {})
+
+            new_prompt = (blueprint.get("pre_built_prompts", {}) or {}).get("full_character", "")
+            existing_prompt = (existing_blueprint.get("pre_built_prompts", {}) or {}).get(
+                "full_character", ""
+            )
+            similarity = compute_prompt_similarity(new_prompt, existing_prompt)
+
+            if similarity < DEDUP_SIMILARITY_THRESHOLD:
+                doc["manual_review_needed"] = True
+                logger.warning(
+                    f"⚠️ [T4] '{visual_id}' trùng ID nhưng prompt khác biệt lớn "
+                    f"(similarity={similarity:.2f}) — flag manual_review_needed, KHÔNG merge."
+                )
+                output.append(doc)
                 continue
-                
-            if content_hash in self.existing_hashes:
-                duplicates_count += 1
-            else:
-                new_data.append(item)
-                # Thêm ngay vào local cache để tránh trùng lặp 2 bài giống nhau trong cùng 1 batch
-                self.existing_hashes.add(content_hash)
-        
-        logger.info(f"📊 Kết quả lọc:")
-        logger.info(f"   - Đầu vào: {len(normalized_data)} bản ghi")
-        logger.info(f"   - Trùng lặp: {duplicates_count} bản bị loại")
-        logger.info(f"   - Giữ lại: {len(new_data)} bản ghi mới tinh")
-        
-        return new_data
 
-    def save_to_local(self, contents: list[dict], run_id: str):
-        """Lưu nội dung vào local JSON files để GitHub Actions có dữ liệu commit lên repo"""
-        if not contents:
-            return
-            
-        # Gom nhóm dữ liệu theo từng keyword
-        by_keyword = {}
-        for content in contents:
-            kw = content.get("keyword", "unknown")
-            if kw not in by_keyword:
-                by_keyword[kw] = []
-            by_keyword[kw].append(content)
-        
-        # Lưu file theo từng keyword
-        for kw, kw_contents in by_keyword.items():
-            try:
-                from t0_search import T0Search
-                searcher = T0Search()
-                
-                # Cập nhật state (những URL đã cào thành công)
-                urls = [c["url"] for c in kw_contents]
-                state = searcher.get_keyword_state(kw)
-                existing = set(state.get("scraped_urls", []))
-                for url in urls:
-                    if url not in existing:
-                        state.setdefault("scraped_urls", []).append(url)
-                state["links_scraped"] = len(state.get("scraped_urls", []))
-                searcher.save_keyword_state(state)
-                
-                # Ghi ra file JSON trong thư mục data/raw
-                filename = searcher._normalize_keyword(kw)
-                raw_path = os.path.join(settings.RAW_DIR, f"{filename}_{run_id}.json")
-                
-                with open(raw_path, 'w', encoding='utf-8') as f:
-                    json.dump(kw_contents, f, ensure_ascii=False, indent=2)
-                
-                logger.info(f"   💾 Đã lưu thành công file cục bộ: {raw_path} ({len(kw_contents)} bản ghi)")
-            except Exception as e:
-                logger.error(f"   ❌ Lỗi khi lưu file JSON cục bộ cho keyword '{kw}': {e}")
+            # Merge gap_filling_status: giữ bản có nhiều field completed hơn,
+            # union pending_fields.
+            existing_gap = existing_blueprint.get("metadata", {}).get("gap_filling_status", {})
+            new_gap = blueprint.get("metadata", {}).get("gap_filling_status", {})
 
-    def run(self, normalized_data: list[dict], run_id: str) -> list[dict]:
-        """Chạy pipeline T4"""
-        new_data = self.check_duplicates(normalized_data)
-        if new_data:
-            self.save_to_local(new_data, run_id)
-        return new_data
+            existing_score = _count_completed_fields(existing_gap)
+            new_score = _count_completed_fields(new_gap)
 
-def run_t4(normalized_data: list[dict], run_id: str) -> list[dict]:
-    """Entry point cho T4 (Nhận đủ 2 biến từ main.py)"""
-    deduper = T4Deduplicate()
-    return deduper.run(normalized_data, run_id)
+            merged_gap = dict(existing_gap if existing_score >= new_score else new_gap)
+            merged_gap["pending_fields"] = list(
+                set(existing_gap.get("pending_fields", []))
+                | set(new_gap.get("pending_fields", []))
+            )
+
+            merged_blueprint = existing_blueprint if existing_score >= new_score else blueprint
+            merged_blueprint.setdefault("metadata", {})["gap_filling_status"] = merged_gap
+
+            doc["blueprint"] = merged_blueprint
+            doc["merged"] = True
+            existing_visual_ids[visual_id] = doc
+            logger.info(f"🔀 [T4] '{visual_id}' merged (existing_score={existing_score}, new_score={new_score}).")
+            output.append(doc)
+        else:
+            existing_visual_ids[visual_id] = doc
+            output.append(doc)
+
+    logger.info(f"✅ [T4] Dedup hoàn thành — {len(output)}/{len(validated_docs)} document giữ lại.")
+    return output
+
 
 if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - [T4] %(message)s',
-        datefmt='%H:%M:%S'
-    )
-    
-    # Test mô phỏng
-    test_data = [
-        {"content_hash": "hash_silicon_acid_1", "rule_type": "biochemistry", "keyword": "test_kw", "url": "url1"},
-        {"content_hash": "hash_calcium_methane_2", "rule_type": "biochemistry", "keyword": "test_kw", "url": "url2"},
-        {"content_hash": "hash_silicon_acid_1", "rule_type": "biochemistry", "keyword": "test_kw", "url": "url1"} # Sẽ bị loại
-    ]
-    
-    unique_data = run_t4(test_data, "run_test_123")
-    print(f"\n✅ Dữ liệu sau khi lọc T4 sẵn sàng cho T5: {len(unique_data)} bản ghi")
+    logging.basicConfig(level=logging.INFO)

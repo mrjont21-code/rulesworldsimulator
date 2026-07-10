@@ -1,200 +1,294 @@
 """
-Config - Foundational Knowledge Engine (World Simulator)
-=========================================================
-Pipeline này là hệ thống thu thập tri thức khoa học khách quan để xây dựng
-nền tảng quy luật vũ trụ mô phỏng. Mọi hằng số ở đây phục vụ mục tiêu đó.
+Config — Layer 0 (Nguồn khai báo Schema) — Repo 1 Visual-First Harvester
+=========================================================================
+File này CHỈ chứa data/constants tĩnh. KHÔNG import pymongo hay
+google-generativeai ở đây (đó là việc của mongo_shared.py / summarizer.py).
+
+Đây là file DUY NHẤT được phép chứa định nghĩa schema thô dạng dict.
+Mọi agent khác (t0..t5, summarizer, builders) chỉ được IMPORT từ đây,
+không copy-paste lại cấu trúc.
 """
-import logging
+from __future__ import annotations
+
+import enum
 import os
-import sys
-
-logger = logging.getLogger(__name__)
+from typing import List, Literal, TypedDict
 
 
-class Settings:
-    # === TIMER POMODORO ===
-    WORK_MINUTES = 25
-    BREAK_MINUTES = 15
-
-    # === SEARCH ===
-    LINKS_PER_SEARCH = 20
-    SEARCH_DELAY_SECONDS = 0  # Không dùng nữa, dùng stealth.human_delay()
-
-    # === ANTI-BAN DELAYS ===
-    DELAY_BETWEEN_REQUESTS = 0   # Không dùng nữa
-    MIN_REQUEST_DELAY = 8.0      # Tối thiểu 8 giây giữa các request
-    MAX_REQUEST_DELAY = 20.0     # Tối đa 20 giây
-    MIN_KEYWORD_BREAK = 30.0     # Nghỉ tối thiểu 30s giữa keywords
-    MAX_KEYWORD_BREAK = 60.0     # Nghỉ tối đa 60s giữa keywords
-
-    # === KEYWORDS ===
-    KEYWORDS_FILE = "keywords.json"
-    KEYWORD_STATE_DIR = "keyword_states"
-
-    # === SCRAPING ===
-    MIN_CONTENT_LENGTH = 300
-    # Ngưỡng lọc chất lượng tại T2 — đặt thấp (2) vì văn phong academic/báo
-    # cáo khoa học thường ngắn gọn, không lặp từ khóa dày như nội dung phổ thông.
-    # Nâng lên 3–4 chỉ khi pipeline nhập quá nhiều nội dung không liên quan
-    # sau khi đã xác nhận bằng dữ liệu mẫu thật.
-    MIN_ONTOLOGY_KEYWORDS = 2
-
-    # === FILES ===
-    ENGINES_FILE = "search_engines.json"
-    BLACKBOOK_FILE = "blackbook.json"
-
-    # === PRE-UPLOAD HARD FILTER (MVP — chưa cần AI lọc) ===
-    # LƯU Ý: KHÁC với MIN_CONTENT_LENGTH (300) ở mục SCRAPING phía trên —
-    # hằng số đó dùng cho T2 (content quality gate lúc scrape, dựa trên
-    # SCIENCE_ONTOLOGY_KEYWORDS). Bộ hằng số dưới đây dùng cho bước lọc
-    # rác cứng NGAY TRƯỚC KHI UPLOAD lên MongoDB (T5). Đặt tên riêng
-    # (FILTER_MIN_CONTENT_LENGTH) để không đè lên logic T2 đã có.
-    MIN_TITLE_LENGTH = 10
-    FILTER_MIN_CONTENT_LENGTH = 200
-    ALLOWED_LANGUAGES = ["en"]  # Tạm thời chỉ lấy tiếng Anh
-
-    # === DATA DIRS ===
-    DATA_DIR = "data"
-    RAW_DIR = "data/raw"
-    QUEUE_DIR = "data/queue"
-
-    # === MONGODB (Optional) ===
-    MONGODB_URI = os.getenv("MONGODB_URI", "")
-    MONGODB_DB_NAME = os.getenv("MONGODB_DB_NAME", "rulesworld")
-    MONGODB_COLLECTION_KEYWORDS = "keywords"
-    MONGODB_COLLECTION_LINKS = "links"
-    MONGODB_COLLECTION_CONTENT = "content"
-    MONGODB_COLLECTION_RULES = "world_rules"
-    MONGODB_COLLECTION_RUNS = "run_logs"
-
-    # === SCIENCE ONTOLOGY KEYWORDS ===
-    # Single source of truth cho cả T2 (content quality gate) lẫn T3
-    # (extractive_summary, boost câu có cấu trúc nhân quả).
-    #
-    # Cấu trúc từ điển chia theo nhóm Ontology để dễ mở rộng theo từng lĩnh
-    # vực khoa học. Nhóm "Cause-Effect markers" KHÔNG boost theo chủ đề mà
-    # boost theo cấu trúc câu logic — đây là nguyên liệu trực tiếp cho Rule
-    # Object (điều kiện kích hoạt / đầu ra / tác động).
-    #
-    # LƯU Ý MIGRATION: Nếu đổi tên field "matched_keywords" trong output
-    # MongoDB, cần script riêng migrate collection permanent.* — không tự
-    # động đổi ngầm trong code này.
-    SCIENCE_ONTOLOGY_KEYWORDS = [
-        # --- Energy / Matter exchange ---
-        "energy transfer", "metabolic pathway", "thermodynamic", "entropy",
-        "catalyst", "chemical gradient", "exothermic", "endothermic",
-        "activation energy", "redox reaction", "oxidation", "reduction",
-        "potential energy", "kinetic energy", "conservation of energy",
-        "heat exchange", "thermal equilibrium", "phase transition",
-
-        # --- Adaptation / Evolution / Mutation ---
-        "natural selection", "mutation rate", "adaptive trait",
-        "fitness landscape", "speciation", "convergent evolution",
-        "selective pressure", "genetic drift", "evolutionary pressure",
-        "phenotypic plasticity", "horizontal gene transfer",
-        "punctuated equilibrium", "arms race", "coevolution",
-        "molecular clock", "phylogenetic", "common ancestor",
-
-        # --- Reproduction / Core Biology ---
-        "reproductive strategy", "homeostasis", "symbiotic relationship",
-        "metabolism", "cellular process", "mitosis", "meiosis",
-        "gene expression", "protein synthesis", "enzyme activity",
-        "membrane transport", "osmosis", "diffusion", "active transport",
-        "immune response", "allele frequency", "phenotype", "genotype",
-        "epigenetic", "dna replication", "transcription factor",
-
-        # --- Cooperation / Conflict (Game Theory) ---
-        "zero-sum", "nash equilibrium", "cooperative strategy",
-        "resource competition", "tragedy of the commons", "payoff matrix",
-        "prisoner's dilemma", "tit-for-tat", "evolutionary stable strategy",
-        "arms race dynamics", "mutualism", "parasitism", "commensalism",
-        "altruism", "kin selection", "group selection", "defection",
-
-        # --- Society / Network Theory ---
-        "network effect", "social hierarchy", "emergent behavior",
-        "collective intelligence", "feedback loop", "social network",
-        "information cascade", "tipping point", "phase transition",
-        "critical mass", "self-organization", "decentralization",
-        "stigmergy", "swarm intelligence", "distributed cognition",
-
-        # --- Physics / Astronomy / Environment ---
-        "gravitational force", "orbital mechanics", "electromagnetic",
-        "quantum state", "wave function", "nuclear fusion", "stellar evolution",
-        "habitable zone", "atmospheric composition", "magnetic field",
-        "plate tectonics", "geological time", "extinction event",
-        "carbon cycle", "nitrogen cycle", "water cycle", "nutrient cycle",
-        "solar radiation", "cosmic radiation", "tidal force",
-
-        # --- Information / Intelligence / Cognition ---
-        "information processing", "signal transduction", "neural pathway",
-        "cognitive load", "pattern recognition", "decision making",
-        "memory consolidation", "learning rate", "synaptic plasticity",
-        "computational complexity", "algorithmic", "optimization",
-
-        # --- Cause-Effect structural markers ---
-        # Nhóm này boost theo CẤU TRÚC CÂU LOGIC, không phải chủ đề.
-        # Được dùng trong extractive_summary để ưu tiên câu nhân quả —
-        # đây là nguyên liệu cho Rule Object: điều kiện → biến đổi → kết quả.
-        "results in", "leads to", "due to", "caused by",
-        "as a consequence", "if then", "depends on", "correlates with",
-        "threshold", "trigger condition", "sufficient condition",
-        "necessary condition", "enables", "prevents", "inhibits",
-        "promotes", "accelerates", "decelerates", "modulates",
-        "regulates", "constrains", "amplifies", "attenuates",
-        "because", "therefore", "thus", "hence",
-    ]
-
-    # Alias tương thích ngược: các module chưa migrate vẫn import
-    # DRAMA_KEYWORDS sẽ nhận đúng SCIENCE_ONTOLOGY_KEYWORDS thay vì list cũ.
-    # Xóa alias này sau khi toàn bộ codebase đã chuyển sang tên mới.
-    DRAMA_KEYWORDS = property(lambda self: self.SCIENCE_ONTOLOGY_KEYWORDS)
-
-    # Alias tương thích ngược cho MIN_DRAMA_KEYWORDS
-    MIN_DRAMA_KEYWORDS = property(lambda self: self.MIN_ONTOLOGY_KEYWORDS)
+# =============================================================================
+# MASTER SCHEMA 2.0 — khớp chính xác PHẦN 28.3 của World Simulator Pipeline doc
+# =============================================================================
+MASTER_SCHEMA_2_0: dict = {
+    "schema_version": "2.0",
+    "document_type": "worldbuilding_design_pattern",
+    "form_1_planet_foundation": {
+        "planet_identity": {
+            "planet_type": "",
+            "core_material": "",
+            "physical_appearance": [],
+            "terrain_patterns": [],
+            "climate_patterns": [],
+            "energy_sources": [],
+            "natural_resources": [],
+            "planetary_hazards": [],
+            "planetary_phenomena": [],
+        },
+        "ecosystem_foundation": {
+            "dominant_ecosystem": [],
+            "dominant_life_material": "",
+            "food_chain_patterns": [],
+            "ecological_cycles": [],
+            "environmental_adaptations": [],
+        },
+    },
+    "form_2_civilization_layer": {
+        "biology_and_behavior": {
+            "species_morphology": [],
+            "species_behavior": [],
+        },
+        "society_and_infrastructure": {
+            "architecture_patterns": [],
+            "transportation_patterns": [],
+            "technology_patterns": [],
+            "government_patterns": [],
+            "economic_patterns": [],
+            "military_patterns": [],
+        },
+        "culture_and_history": {
+            "religion_and_belief": [],
+            "cultural_patterns": [],
+            "language_patterns": [],
+            "art_patterns": [],
+            "daily_life_patterns": [],
+            "historical_patterns": [],
+            "diplomatic_patterns": [],
+        },
+    },
+    "provenance_and_metadata": {
+        "target_form_field": "",
+        "search_strategy_used": "",
+        "extracted_from_domain": "",
+        "ip_filter_status": "unverified",
+        "original_ip_detected": [],
+        "quality_gate_passed": False,
+        "timestamp": "",
+    },
+}
 
 
-settings = Settings()
+# =============================================================================
+# VISUAL BLUEPRINT 3.0 — khung mẫu rỗng, dùng làm base khi khởi tạo blueprint
+# mới trong summarizer.py (Phase A). Copy khung rỗng từ §28.5.
+# =============================================================================
+VISUAL_BLUEPRINT_3_0_TEMPLATE: dict = {
+    "visual_id": "",
+    "entity_type": "",
+    "version": "3.0",
+    "prompt_metadata": {
+        "style_preset": "",
+        "quality_tags": "",
+        "resolution": "",
+        "aspect_ratio": "",
+        "seed_lock": True,
+        "base_seed": 0,
+    },
+    "character_blueprint": {},
+    "clothing_and_gear": {},
+    "multi_view_references": {},
+    "environment_blueprint": None,
+    "prompt_assembly_rules": {
+        "order_priority": [],
+        "separator": ", ",
+        "weight_format": "({text}:{weight})",
+        "negative_separator": ", ",
+        "always_include": [],
+        "conditional_inclusion": {},
+    },
+    "pre_built_prompts": {},
+    "consistency_lock": {
+        "locked": False,
+        "locked_fields": [],
+        "variable_fields": [],
+    },
+    "validation_rules": {
+        "required_fields": [],
+        "min_prompt_length": 150,
+        "max_prompt_length": 700,
+        "forbidden_combinations": [],
+    },
+    "metadata": {
+        "created_at": "",
+        "last_updated": "",
+        "source_provenance": [],
+        "gap_filling_status": {
+            "biology_completed": False,
+            "culture_completed": False,
+            "pending_fields": [],
+        },
+    },
+}
 
-for d in [settings.DATA_DIR, settings.RAW_DIR, settings.QUEUE_DIR, settings.KEYWORD_STATE_DIR]:
-    os.makedirs(d, exist_ok=True)
+
+# =============================================================================
+# VISUAL KEYWORD FILTER — thay thế hoàn toàn SCIENCE_ONTOLOGY_KEYWORDS.
+# Biến SCIENCE_ONTOLOGY_KEYWORDS đã bị XÓA khỏi file này (không giữ alias).
+# =============================================================================
+VISUAL_KEYWORD_FILTER: List[str] = [
+    "texture", "morphology", "surface", "structure", "glowing", "layout",
+    "silhouette", "pattern", "material", "pigmentation", "translucent",
+    "bioluminescent", "iridescent", "geometry", "shape", "form factor",
+    "coloration", "camouflage", "ornamentation", "carapace", "plating",
+    "musculature", "skeletal structure", "appendage", "proportion",
+    "concept art", "character design", "creature design", "environment art",
+    "reference sheet", "turnaround", "front view", "side view", "close-up",
+    "architecture style", "facade", "ornament", "roofline", "spire",
+    "foliage", "canopy", "bark texture", "petal", "coloring", "hue",
+]
 
 
-def validate_startup_config() -> None:
-    """Config & Database Guard — kiểm tra TOÀN BỘ điều kiện tối thiểu để
-    pipeline chạy được TRƯỚC KHI làm bất cứ việc gì tốn thời gian/quota
-    (search, scrape, gọi LLM...). Nếu thiếu 1 điều kiện bắt buộc ->
-    log lỗi RÕ RÀNG và `sys.exit(1)` ngay (chống "chết lén" giữa chừng).
+class VisualSourcePriority(enum.IntEnum):
+    """Dùng bởi t1_classify.py để sort/threshold."""
+    VISUAL_RICH = 3
+    VISUAL_MODERATE = 2
+    TEXT_ONLY = 1
 
-    Không raise exception — cố tình dùng sys.exit(1) để dừng tiến trình
-    dứt khoát, kể cả khi được gọi từ trong try/except ở nơi khác.
+
+# =============================================================================
+# MONGO TARGET COLLECTIONS — KHÔNG còn key "world_rules" cũ (deprecated khỏi
+# phạm vi Repo 1 theo nguyên tắc toàn cục §0).
+#
+# "world_rule_library" là collection MỚI, khác tên và khác bản chất so với
+# "world_rules" cũ đã xoá: đây là collection data-driven cho Global Rule
+# Library (Check G / Gate 5), có schema riêng với "rule_type"/"severity"/
+# "active" (xem rule_library.py) — KHÔNG phải hồi sinh code "world_rules" cũ.
+# =============================================================================
+MONGO_TARGET_COLLECTIONS: dict = {
+    "fiction_knowledge": "fiction_knowledge",
+    "visual_blueprint_collection": "visual_blueprint_collection",
+    "world_rule_library": "world_rule_library",
+    "lib_entities": "lib_entities",                     # [MỚI — Gate 6.5] Library Layer cho §16-27
+}
+
+
+QueryVariant = Literal["Concept", "Design", "Description", "Reference", "Variant"]
+
+
+class SourceType(TypedDict, total=False):
+    pass
+
+
+def _flatten_leaf_fields(node: dict, prefix: str = "") -> List[str]:
+    """Duyệt đệ quy 1 sub-dict của MASTER_SCHEMA_2_0, trả list dot-path
+    của các field lá (leaf = giá trị không phải dict lồng thêm)."""
+    leaves: List[str] = []
+    for key, value in node.items():
+        path = f"{prefix}.{key}" if prefix else key
+        if isinstance(value, dict):
+            leaves.extend(_flatten_leaf_fields(value, path))
+        else:
+            leaves.append(path)
+    return leaves
+
+
+def get_form_fields(
+    form_name: Literal["form_1_planet_foundation", "form_2_civilization_layer"]
+) -> List[str]:
+    """Trả về flatten list tên các field lá (leaf fields) của 1 form trong
+    MASTER_SCHEMA_2_0, dạng dot-notation đầy đủ (bao gồm cả prefix form_name),
+    ví dụ: "form_1_planet_foundation.planet_identity.terrain_patterns".
+
+    Dùng bởi t0_search.py để lặp sinh query — KHÔNG hardcode tên field ở
+    nơi gọi.
     """
-    is_valid = True
+    form_node = MASTER_SCHEMA_2_0.get(form_name)
+    if not isinstance(form_node, dict):
+        return []
+    return _flatten_leaf_fields(form_node, prefix=form_name)
 
-    # 1. MONGODB_URI không được rỗng
-    if not settings.MONGODB_URI:
-        logger.error("❌ [CONFIG] MONGODB_URI đang rỗng — chưa set biến môi trường MONGODB_URI.")
-        is_valid = False
 
-    # 2. KEYWORDS_FILE phải tồn tại trên disk
-    if not os.path.isfile(settings.KEYWORDS_FILE):
-        logger.error(f"❌ [CONFIG] KEYWORDS_FILE không tồn tại: '{settings.KEYWORDS_FILE}'")
-        is_valid = False
+# =============================================================================
+# GEMINI — round robin API keys (Free Tier). Giữ nguyên convention hiện có:
+# key env var vẫn đặt tên CLAUDE_KEY_* vì lý do tương thích ngược lịch sử,
+# dù model dùng thực tế là Gemini Flash 2.5 Free (KHÔNG phải Anthropic).
+# =============================================================================
+def load_gemini_api_keys() -> List[str]:
+    """Đọc tối đa 7 API key Gemini Free Tier từ env var CLAUDE_KEY_1..CLAUDE_KEY_7.
+    Bỏ qua key rỗng. Trả về list rỗng nếu không có key nào (pipeline vẫn phải
+    chạy được để chạy unit test / các bước không dùng LLM)."""
+    keys = []
+    for i in range(1, 8):
+        key = os.getenv(f"CLAUDE_KEY_{i}", "").strip()
+        if key:
+            keys.append(key)
+    return keys
 
-    # 3. ENGINES_FILE phải tồn tại trên disk
-    if not os.path.isfile(settings.ENGINES_FILE):
-        logger.error(f"❌ [CONFIG] ENGINES_FILE không tồn tại: '{settings.ENGINES_FILE}'")
-        is_valid = False
 
-    # 4. Thư mục output — tự tạo nếu chưa có, KHÔNG báo lỗi cho trường hợp này
-    for output_dir in [settings.RAW_DIR, settings.KEYWORD_STATE_DIR]:
-        try:
-            os.makedirs(output_dir, exist_ok=True)
-        except Exception as e:
-            logger.error(f"❌ [CONFIG] Không thể tạo thư mục output '{output_dir}': {e}")
-            is_valid = False
+GEMINI_API_KEYS: List[str] = load_gemini_api_keys()
+GEMINI_MODEL_NAME: str = os.getenv("GEMINI_MODEL_NAME", "gemini-2.5-flash")
 
-    if not is_valid:
-        logger.error("🛑 [CONFIG] Startup config validation THẤT BẠI — dừng tiến trình.")
-        sys.exit(1)
+# Ngưỡng dùng bởi t1_classify.py (Gate 1)
+VISUAL_SCORE_THRESHOLD: float = float(os.getenv("VISUAL_SCORE_THRESHOLD", "1.5"))
 
-    logger.info("✅ [CONFIG] Startup config validation OK — đủ điều kiện chạy pipeline.")
+# Ngưỡng mật độ từ khóa thị giác dùng bởi t2_scrape.py (Gate 2)
+VISUAL_KEYWORD_DENSITY_THRESHOLD: float = float(
+    os.getenv("VISUAL_KEYWORD_DENSITY_THRESHOLD", "0.01")
+)
+
+# Ngưỡng similarity dùng bởi t4_deduplicate.py
+DEDUP_SIMILARITY_THRESHOLD: float = float(os.getenv("DEDUP_SIMILARITY_THRESHOLD", "0.85"))
+
+# =============================================================================
+# [CẬP NHẬT — SPEC_FIX_P1_ARCHITECTURE] Vấn đề 1 & 2
+# =============================================================================
+# Đường dẫn state file dùng chung DUY NHẤT giữa t0_search.py và t2_scrape.py.
+# main.py là nơi DUY NHẤT load/save file này (xem load_blackbook/save_blackbook
+# trong main.py) — t0/t2 chỉ nhận blackbook qua tham số (dependency injection),
+# không tự mở file.
+BLACKBOOK_PATH: str = os.getenv("BLACKBOOK_PATH", "blackbook.json")
+
+# Danh sách view tối thiểu bắt buộc để 1 Visual Blueprint được coi là "đầy đủ"
+# về mặt hình ảnh — cấu hình được, KHÔNG hardcode trong logic Gate 5.
+# Dùng bởi t3_normalize.py (Check B / run_gate_5).
+MIN_REQUIRED_VIEWS: list[str] = ["front_view", "side_view"]
+
+MONGODB_URI: str = os.getenv("MONGODB_URI", "")
+MONGODB_DB_NAME: str = os.getenv("MONGODB_DB_NAME", "world_simulator")
+
+# =============================================================================
+# QUALITY SCORER — dùng bởi core/quality_scorer.py (Gate 5, run_gate_5()).
+# Tổng 4 trọng số PHẢI = 100 — có unit test riêng assert việc này
+# (tests/test_quality_scorer.py::test_weights_sum_to_100).
+# =============================================================================
+QUALITY_SCORE_WEIGHTS: dict = {
+    "view_completeness": 30,
+    "ip_cleanliness": 20,
+    "prompt_depth": 20,
+    "schema_completeness": 30,
+}
+
+# 5 slot view tối đa có thể có — KHÁC MIN_REQUIRED_VIEWS (dòng 251, đó là
+# ngưỡng PASS tối thiểu của Check B). Đây là mẫu số đầy đủ để tính điểm,
+# phải khớp đúng 5 key cố định của multi_view_references (xem
+# schemas/visual_blueprint_3_0.py — ViewReference).
+ALL_VIEW_SLOTS: list[str] = [
+    "front_view", "side_view", "back_view",
+    "close_up_face", "environment_context",
+]
+
+IP_CLEANLINESS_SCORE_MAP: dict = {
+    "cleaned_no_ip_detected": 20,
+    "cleaned_but_ip_found": 10,
+    "unverified": 5,
+    "failed": 0,
+}
+
+# (min, max, điểm) — dải điểm graduated theo độ dài pre_built_prompts.full_character
+# SAU KHI Check D (t3_normalize.py, dòng ~296-312) đã tự truncate nếu quá dài.
+PROMPT_DEPTH_BANDS: list[tuple[int, int, int]] = [
+    (0, 150, 0),
+    (150, 200, 10),
+    (200, 10**9, 20),
+]
+
+QUALITY_SCORE_PASS_THRESHOLD: int = 60
+

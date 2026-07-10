@@ -1,316 +1,348 @@
 """
-T0: SEARCH - Anti-Ban Mode (Playwright edition)
-- Dùng Chromium thật (Playwright) thay vì curl_cffi/httpx giả header
-- --disable-blink-features=AutomationControlled để xoá navigator.webdriver
-- Retry per engine với backoff ngắn (giống tinnhanh/t1_search.py)
-- Chỉ xử lý 1 keyword mỗi lần gọi
-- Delay 8-20s giữa các engines (stealth.human_delay)
+t0_search.py — Agent 1: Dynamic Query Generator (Visual-First)
+=================================================================
+[CX]
+- KHÔNG hardcode tên field ("terrain_patterns", "architecture_patterns"...)
+  trực tiếp trong file này — luôn lấy qua get_form_fields() từ config.py.
+- KHÔNG gọi LLM ở đây.
+- Domain khoa học/học thuật phải bị hạ priority hoặc drop — dùng lại
+  domain_ban.py hiện có, mở rộng danh sách chặn.
 """
-import os
+from __future__ import annotations
+
+import asyncio
 import json
 import logging
 import random
-import urllib.parse
-from datetime import datetime, timezone
+from typing import List, Literal, Optional, TypedDict
+from urllib.parse import urlparse
 
-from playwright.sync_api import sync_playwright
+import httpx
 
-from config import settings
-from stealth import get_random_ua, human_delay
-from domain_ban import is_banned
+from config import get_form_fields, MASTER_SCHEMA_2_0
+from domain_ban import (
+    is_banned,
+    is_academic_domain,
+    is_domain_or_subdomain_in,
+    record_failure,
+    record_success,
+)
+import stealth
 
 logger = logging.getLogger(__name__)
 
-# Trials per engine trước khi bỏ cuộc. IP của GitHub Actions bị rate-limit/
-# CAPTCHA thường xuyên hơn IP dân dụng -> 1 lần retry với backoff ngắn cứu
-# được một phần đáng kể các lần bị chặn tạm thời.
-MAX_ENGINE_ATTEMPTS = 2
-RETRY_DELAY_RANGE_MS = (1500, 3500)
+QueryVariant = Literal["Concept", "Design", "Description", "Reference", "Variant"]
+
+VISUAL_RICH_DOMAINS = {
+    "artstation.com", "deviantart.com", "pinterest.com", "conceptart.org",
+    "fandom.com", "worldanvil.com",
+}
 
 
-class T0Search:
-    def __init__(self):
-        self.engines_config = self._load_engines_config()
-        self.blackbook = self._load_blackbook()
-        self.session_start = None
+class SearchResultItem(TypedDict):
+    url: str
+    target_form_field: str
+    source_type: str  # "visual_rich" | "visual_moderate" (sơ bộ). "text_only"
+                       # không còn được T0 sinh ra nữa — academic domain bị
+                       # `continue` loại thẳng, xem search_field() (Fix Check
+                       # T0 — SPEC_gate6_5_planet_occupation_and_core_fixes).
+    ip_heavy_flag: bool
+    query_variant: str
+    field_already_filled: bool  # [MỚI — BUG #2] True nếu field này KHÔNG nằm
+                                 # trong target_fields (tức đã đầy, chỉ search
+                                 # vì đang ở full-scan mode)
 
-    def _load_engines_config(self) -> dict:
-        path = settings.ENGINES_FILE
-        if os.path.exists(path):
-            with open(path, 'r', encoding='utf-8') as f:
-                return json.load(f)
+
+def generate_queries_for_field(field_name: str) -> List[str]:
+    """Sinh đúng 5 query variant cho 1 field (lấy phần cuối của dot-path
+    làm từ khóa chính, ví dụ 'form_1_planet_foundation.planet_identity.terrain_patterns'
+    -> 'terrain patterns')."""
+    keyword = field_name.split(".")[-1].replace("_", " ")
+    return [
+        f"{keyword} concept art",
+        f"{keyword} design",
+        f"{keyword} description worldbuilding",
+        f"{keyword} reference sheet",
+        f"{keyword} variant types",
+    ]
+
+
+_QUERY_VARIANT_ORDER: List[QueryVariant] = [
+    "Concept", "Design", "Description", "Reference", "Variant",
+]
+
+
+def _load_search_engines() -> dict:
+    try:
+        with open("search_engines.json", "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        logger.warning(f"⚠️ Không thể đọc search_engines.json: {e}")
         return {"engines": [], "banned_domains": [], "priority_sources": []}
 
-    def _load_blackbook(self) -> dict:
-        path = settings.BLACKBOOK_FILE
-        if os.path.exists(path):
-            with open(path, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        return {}
 
-    def _save_blackbook(self):
-        with open(settings.BLACKBOOK_FILE, 'w', encoding='utf-8') as f:
-            json.dump(self.blackbook, f, indent=2, ensure_ascii=False)
+def _domain_of(url: str) -> str:
+    try:
+        return urlparse(url).netloc.lower().replace("www.", "")
+    except Exception:
+        return ""
 
-    def get_keyword_state(self, keyword: str) -> dict:
-        normalized = self._normalize_keyword(keyword)
-        state_path = os.path.join(settings.KEYWORD_STATE_DIR, f"{normalized}.json")
 
-        default_state = {
-            "keyword": keyword,
-            "normalized": normalized,
-            "total_links_found": 0,
-            "links_scraped": 0,
-            "scraped_urls": [],
-            "found_urls": [],
-            "last_run": None,
-            "run_count": 0,
-            "is_exhausted": False
-        }
+async def _fetch_search_results(
+    client: httpx.AsyncClient, engine: dict, query: str, blackbook: dict
+) -> List[str]:
+    """Gọi 1 search engine, trả về list URL thô. Không raise — lỗi mạng chỉ
+    log và trả list rỗng (không được làm crash toàn bộ pipeline)."""
+    url = engine["url_template"].format(query=httpx.QueryParams({"q": query}).get("q", query))
+    domain = _domain_of(url)
 
-        if os.path.exists(state_path):
-            try:
-                with open(state_path, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except Exception:
-                return default_state
-        return default_state
-
-    def save_keyword_state(self, state: dict):
-        normalized = state["normalized"]
-        state_path = os.path.join(settings.KEYWORD_STATE_DIR, f"{normalized}.json")
-        state["last_run"] = datetime.now(timezone.utc).isoformat()
-        with open(state_path, 'w', encoding='utf-8') as f:
-            json.dump(state, f, indent=2, ensure_ascii=False)
-
-    def _normalize_keyword(self, kw: str) -> str:
-        import re
-        kw = kw.lower()
-        kw = re.sub(r'[^a-z0-9\s]', '', kw)
-        kw = re.sub(r'\s+', '_', kw.strip())
-        return kw[:50]
-
-    def _is_time_remaining(self) -> bool:
-        if self.session_start is None:
-            return True
-        elapsed = (datetime.now(timezone.utc) - datetime.fromtimestamp(self.session_start, timezone.utc)).total_seconds()
-        return elapsed < (settings.WORK_MINUTES * 60 - 30)
-
-    def _get_next_keyword(self, keywords: list[str]) -> tuple[str, dict] | None:
-        """Lấy keyword tiếp theo chưa exhausted"""
-        keyword_states = [(kw, self.get_keyword_state(kw)) for kw in keywords]
-
-        def sort_key(item):
-            kw, state = item
-            exhausted = state.get("is_exhausted", False)
-            last_run = state.get("last_run") or "0000"
-            return (0 if not exhausted else 1, last_run)
-
-        keyword_states.sort(key=sort_key)
-
-        for kw, state in keyword_states:
-            if not state.get("is_exhausted", False):
-                return (kw, state)
-
-        logger.warning("⚠️  Tất cả keywords exhausted, reset tất cả")
-        for kw, state in keyword_states:
-            state["is_exhausted"] = False
-            self.save_keyword_state(state)
-        return (keyword_states[0][0], keyword_states[0][1])
-
-    def _unwrap_redirect(self, href: str) -> str:
-        """Google/Startpage đôi khi bọc link thật trong /url?q=<real>&..."""
-        if href.startswith("/url?") or "google.com/url?" in href:
-            parsed = urllib.parse.urlparse(href)
-            qs = urllib.parse.parse_qs(parsed.query)
-            if "q" in qs and qs["q"]:
-                href = qs["q"][0]
-        # Bỏ fragment (#anchor) để tránh trùng lặp cùng trang với anchor khác
-        # Ví dụ: Wikipedia trả về 4 URL cùng /wiki/Carbon-based_life chỉ khác #section
-        parsed = urllib.parse.urlparse(href)
-        return urllib.parse.urlunparse(parsed._replace(fragment=""))
-
-    def _build_search_url(self, engine: dict, keyword: str) -> str:
-        encoded = urllib.parse.quote_plus(keyword)
-        return engine["url_template"].format(query=encoded)
-
-    def _fetch_links_from_engine(self, page, engine: dict, keyword: str) -> list[dict]:
-        """
-        Mở trang search bằng Chromium thật (Playwright), đọc DOM đã render.
-        Retry MAX_ENGINE_ATTEMPTS lần với backoff ngắn nếu bị chặn/timeout.
-        """
-        engine_name = engine.get("name", "Engine")
-        link_selector = engine.get("link_selector", "a[href]")
-        exclude_domain = engine.get("exclude_domain_in_href", "")
-        timeout_ms = 20000
-
-        # POST (Startpage) không đi qua page.goto trực tiếp được -> dùng GET
-        # tương đương của Startpage khi cần (fallback query string).
-        if engine.get("method", "GET").upper() == "POST":
-            search_url = engine["url_template"] + "?query=" + urllib.parse.quote_plus(keyword) + "&cat=web"
-        else:
-            search_url = self._build_search_url(engine, keyword)
-
-        last_error = None
-        for attempt in range(1, MAX_ENGINE_ATTEMPTS + 1):
-            try:
-                page.goto(search_url, wait_until="domcontentloaded", timeout=timeout_ms)
-                page.wait_for_timeout(random.randint(1200, 2500))  # để JS render xong
-
-                found, seen = [], set()
-                for a in page.locator(link_selector).all():
-                    href = a.get_attribute("href") or ""
-                    href = self._unwrap_redirect(href)
-                    title = (a.inner_text() or "").strip()
-
-                    if not href.startswith("http"):
-                        continue
-                    if exclude_domain and exclude_domain in href.lower():
-                        continue
-                    if href in seen:
-                        continue
-
-                    seen.add(href)
-                    found.append({"url": href, "title": title[:100], "engine": engine_name.lower()})
-
-                return found
-            except Exception as e:
-                last_error = e
-                logger.warning(f"   {engine_name} attempt {attempt}/{MAX_ENGINE_ATTEMPTS} failed: {e}")
-                page.wait_for_timeout(random.randint(*RETRY_DELAY_RANGE_MS))
-
-        logger.warning(f"   {engine_name} gave up after {MAX_ENGINE_ATTEMPTS} tries ({last_error})")
+    if domain and is_banned(blackbook, domain):
+        logger.info(f"⏭️  Bỏ qua engine '{engine.get('name')}' (domain đang bị ban tạm thời).")
         return []
 
-    def search_single_keyword(self, keyword: str) -> list[dict]:
-        """
-        Search 1 keyword qua cascade engines bằng Chromium thật.
-        Dừng khi đủ LINKS_PER_SEARCH links. Delay 8-20s giữa các engines.
-        """
-        all_links = []
-        seen_urls = set()
-        banned_domains = self.engines_config.get("banned_domains", [])
-        priority_sources = self.engines_config.get("priority_sources", [])
-        engines = sorted(self.engines_config.get("engines", []), key=lambda x: x.get("priority", 99))
+    try:
+        headers = stealth.get_stealth_headers()
+        resp = await client.get(url, headers=headers, timeout=15.0)
+        resp.raise_for_status()
+        if domain:
+            record_success(blackbook, domain)
 
-        with sync_playwright() as p:
-            browser = p.chromium.launch(
-                headless=True,
-                args=[
-                    "--no-sandbox",
-                    "--disable-blink-features=AutomationControlled",  # xoá navigator.webdriver
-                    "--disable-dev-shm-usage",
-                ],
-            )
-            context = browser.new_context(
-                user_agent=get_random_ua(),
-                viewport={"width": 1366, "height": 768},
-                locale="en-US",
-            )
-            page = context.new_page()
+        # Trích href thô bằng parser nhẹ (BeautifulSoup ở t2, ở đây chỉ cần
+        # regex/text đơn giản để không phụ thuộc DOM parser tại t0).
+        from bs4 import BeautifulSoup  # import cục bộ để t0 không bắt buộc phụ thuộc nếu không dùng
 
-            for engine in engines:
-                if len(all_links) >= settings.LINKS_PER_SEARCH:
-                    break
-
-                logger.info(f"   🔍 Thử {engine.get('name')}...")
-                engine_links = self._fetch_links_from_engine(page, engine, keyword)
-
-                new_count = 0
-                for link in engine_links:
-                    url = link["url"]
-                    domain = urllib.parse.urlparse(url).netloc.lower()
-
-                    if any(b in domain for b in banned_domains):
-                        continue
-                    if is_banned(self.blackbook, domain):
-                        continue
-                    if url in seen_urls:
-                        continue
-
-                    seen_urls.add(url)
-                    link["is_priority_source"] = any(p in domain for p in priority_sources)
-                    link["domain"] = domain
-                    link["keyword"] = keyword
-                    link["searched_at"] = datetime.now(timezone.utc).isoformat()
-                    all_links.append(link)
-                    new_count += 1
-
-                logger.info(f"   ✅ {engine.get('name')}: +{new_count} links (tổng: {len(all_links)})")
-
-                if len(all_links) < settings.LINKS_PER_SEARCH:
-                    human_delay(min_sec=settings.MIN_REQUEST_DELAY, max_sec=settings.MAX_REQUEST_DELAY)
-
-            page.close()
-            browser.close()
-
-        return all_links[:settings.LINKS_PER_SEARCH]
-
-    def filter_new_links(self, links: list[dict], state: dict) -> list[dict]:
-        seen = set(state.get("found_urls", []))
-        return [l for l in links if l["url"] not in seen]
+        soup = BeautifulSoup(resp.text, "html.parser")
+        selector = engine.get("link_selector", "a[href^='http']")
+        exclude = engine.get("exclude_domain_in_href", "")
+        links = []
+        for a in soup.select(selector):
+            href = a.get("href")
+            if href and href.startswith("http") and (not exclude or exclude not in href):
+                links.append(href)
+        return links
+    except Exception as e:
+        logger.warning(f"⚠️ Lỗi search engine '{engine.get('name')}' cho query '{query}': {e}")
+        if domain:
+            record_failure(blackbook, domain)
+        return []
 
 
-# Module-level singleton: giữ session_start qua nhiều lần gọi run_t0_single_keyword()
-# Mỗi lần gọi tạo T0Search() mới (instance attribute luôn None) nên phải lưu ở đây.
-_SESSION_START: float | None = None
+MAX_FALLBACK_ENGINES = 3  # trần số engine thử/query, tránh đốt quota khi tất cả đều fail
 
 
-def run_t0_single_keyword(keywords: list[str]) -> tuple[str, list[dict], dict] | None:
+async def _fetch_with_fallback(
+    client: httpx.AsyncClient,
+    sorted_engines: List[dict],
+    query: str,
+    blackbook: dict,
+) -> List[str]:
+    """Thử lần lượt các engine theo thứ tự priority tăng dần (engine[0] =
+    priority cao nhất). Dừng ngay khi một engine trả về kết quả không rỗng.
+    Nếu engine hiện tại rỗng/lỗi (bao gồm cả trường hợp bị ban tạm thời trong
+    blackbook), tự động rơi xuống engine kế tiếp. Giới hạn tối đa
+    MAX_FALLBACK_ENGINES lần thử để không đốt quota khi toàn bộ engine đều
+    down.
     """
-    T0 Entry Point: Chỉ search 1 keyword
-    Trả về: (keyword, new_links, state) hoặc None nếu hết giờ/hết keyword
+    last_engine_name = None
+    for engine in sorted_engines[:MAX_FALLBACK_ENGINES]:
+        urls = await _fetch_search_results(client, engine, query, blackbook)
+        if urls:
+            if last_engine_name:
+                logger.info(
+                    f"✅ Fallback thành công: query '{query}' lấy được kết quả "
+                    f"từ engine dự phòng '{engine.get('name')}'."
+                )
+            return urls
+        last_engine_name = engine.get("name")
+        logger.warning(
+            f"↪️  Engine '{last_engine_name}' rỗng/lỗi cho query '{query}', "
+            f"thử engine dự phòng kế tiếp (nếu còn)..."
+        )
+
+    logger.error(f"❌ Toàn bộ engine dự phòng đều thất bại cho query '{query}'.")
+    return []
+
+
+async def search_field(
+    field_name: str, blackbook: dict, max_results_per_query: int = 5
+) -> List[SearchResultItem]:
+    """Sinh 5 query cho field_name, gọi các search engine song song
+    (asyncio), gắn target_form_field vào từng URL kết quả."""
+    engines_cfg = _load_search_engines()
+    engines = engines_cfg.get("engines", [])
+    banned_domains = set(engines_cfg.get("banned_domains", []))
+    priority_sources = set(engines_cfg.get("priority_sources", []))
+
+    if not engines:
+        logger.error("❌ Không có search engine nào được cấu hình (search_engines.json rỗng).")
+        return []
+
+    queries = generate_queries_for_field(field_name)
+    results: List[SearchResultItem] = []
+
+    sorted_engines = sorted(engines, key=lambda e: e.get("priority", 99))
+
+    async with httpx.AsyncClient(follow_redirects=True) as client:
+        tasks = []
+        task_meta = []
+        for variant, query in zip(_QUERY_VARIANT_ORDER, queries):
+            tasks.append(_fetch_with_fallback(client, sorted_engines, query, blackbook))
+            task_meta.append(variant)
+
+        raw_results = await asyncio.gather(*tasks, return_exceptions=False)
+
+    for variant, urls in zip(task_meta, raw_results):
+        for url in urls[:max_results_per_query]:
+            domain = _domain_of(url)
+            if is_domain_or_subdomain_in(domain, banned_domains):
+                continue
+
+            # MỚI — loại bỏ NGAY academic domain tại T0, không đưa vào
+            # results để downgrade ở T1 nữa. Khác với banned_domains (ban
+            # tạm thời do lỗi mạng, có cooldown) — đây là loại VĨNH VIỄN
+            # theo bản chất nguồn (khoa học khách quan, không phải lỗi kỹ
+            # thuật), nên dùng `continue` giống banned_domains, không qua
+            # is_visual_rich nữa vì academic domain không bao giờ nên được
+            # coi là visual_rich dù nằm trong VISUAL_RICH_DOMAINS do nhầm.
+            if is_academic_domain(domain):
+                logger.info(
+                    f"🚫 [T0] Loại academic domain '{domain}' ngay tại search "
+                    f"(field='{field_name}'), không đưa qua T1 downgrade nữa."
+                )
+                continue
+
+            is_visual_rich = domain in VISUAL_RICH_DOMAINS or domain in priority_sources
+            source_type = "visual_rich" if is_visual_rich else "visual_moderate"
+            # LƯU Ý: nhánh "text_only" (dành riêng cho academic) không còn
+            # cần thiết vì academic đã bị continue ở trên — mọi URL còn lại
+            # tới đây chắc chắn KHÔNG academic.
+
+            results.append(
+                SearchResultItem(
+                    url=url,
+                    target_form_field=field_name,
+                    source_type=source_type,
+                    ip_heavy_flag=False,  # t1_classify.py sẽ tinh chỉnh chính xác hơn
+                    query_variant=variant,
+                    field_already_filled=False,  # patch lại ở run_search_pipeline() (mục 2.5 SPEC)
+                )
+            )
+
+    return results
+
+
+async def run_search_pipeline(
+    blackbook: dict,
+    budget=None,   # BudgetManager | None
+    obs=None,      # PipelineLogger | None
+    target_fields: Optional[List[str]] = None,   # [MỚI — Progressive Gap Filling]
+) -> List[SearchResultItem]:
     """
-    global _SESSION_START
+    1. Duyệt toàn bộ field trong MASTER_SCHEMA_2_0 (qua get_form_fields) —
+       trừ khi `target_fields` được truyền vào, khi đó chỉ duyệt field
+       đang pending (Gap-Aware Mode, xem SPEC_PROGRESSIVE_GAP_FILLING_T0).
+    2. Với mỗi field, sinh 5 query, gọi search engine, gắn target_form_field.
+    3. Trả về kết quả ĐÃ loại academic domain (Fix Check T0 —
+       SPEC_gate6_5_planet_occupation_and_core_fixes). banned_domains
+       (tạm thời, có cooldown) vẫn lọc như cũ; academic domain giờ bị
+       loại VĨNH VIỄN ngay tại đây, không còn chờ T1 hạ điểm.
 
-    searcher = T0Search()
+    [SPEC_FIX_P1 — Vấn đề 1] `blackbook` giờ được TRUYỀN VÀO (dependency
+    injection) thay vì tự load/save "blackbook.json" bên trong hàm này.
+    Hàm chỉ MUTATE IN-PLACE dict `blackbook` (qua search_field ->
+    _fetch_search_results -> record_success/record_failure). Việc
+    load/save file JSON là trách nhiệm DUY NHẤT của main.py
+    (load_blackbook/save_blackbook), để tránh race giữa T0 và T2 khi mỗi
+    bên tự đọc/ghi file riêng.
 
-    # Khởi tạo session timer 1 lần duy nhất cho toàn bộ vòng lặp trong main.py
-    if _SESSION_START is None:
-        _SESSION_START = datetime.now(timezone.utc).timestamp()
-        logger.info(f"   🕐 Session timer bắt đầu: {datetime.fromtimestamp(_SESSION_START).strftime('%H:%M:%S')}")
+    [MỚI] `budget` (BudgetManager | None): trừ quota URL cho mỗi kết quả
+    thêm vào `results`. Khi cạn, dừng thu thập ngay và trả về những gì đã
+    có (không raise, không crash pipeline).
 
-    searcher.session_start = _SESSION_START
+    [MỚI — Progressive Gap Filling] `target_fields` (List[str] | None):
+    nếu được truyền và không rỗng, CHỈ search các field trong danh sách
+    này (Gap-Aware Mode) thay vì toàn bộ 29 field (Full-Scan Mode). Field
+    "rác" (không còn tồn tại trong schema hiện hành) sẽ bị lọc bỏ; nếu
+    toàn bộ target_fields đều rác, fallback về Full-Scan Mode.
+    """
+    full_field_set = (
+        get_form_fields("form_1_planet_foundation")
+        + get_form_fields("form_2_civilization_layer")
+    )
 
-    if not searcher._is_time_remaining():
-        logger.info("   ⏰ Session timer hết giờ, dừng T0.")
-        _SESSION_START = None  # Reset cho session Pomodoro tiếp theo
-        return None
+    if not full_field_set:
+        logger.error("❌ [T0] get_form_fields() trả về rỗng — kiểm tra MASTER_SCHEMA_2_0 trong config.py.")
+        return []
 
-    result = searcher._get_next_keyword(keywords)
-    if result is None:
-        return None
+    if target_fields:
+        # [Gap-Aware Mode] Chỉ lặp qua field đang pending — KHÔNG gọi
+        # get_form_fields() cho full set. Lọc chéo với full_field_set để
+        # loại field "rác" (field name không tồn tại trong schema hiện
+        # hành, ví dụ do DB cũ từ version schema trước) — tránh sinh
+        # query vô nghĩa cho field đã bị xoá khỏi MASTER_SCHEMA_2_0.
+        valid_target_fields = [f for f in target_fields if f in full_field_set]
+        skipped_unknown = set(target_fields) - set(valid_target_fields)
+        if skipped_unknown:
+            logger.warning(
+                f"⚠️ [T0] Bỏ qua {len(skipped_unknown)} field không còn "
+                f"tồn tại trong schema hiện hành: {sorted(skipped_unknown)}"
+            )
 
-    keyword, state = result
+        if valid_target_fields:
+            all_fields = valid_target_fields
+            logger.info(
+                f"🎯 [T0] Gap-Aware Mode — chỉ tìm {len(all_fields)} "
+                f"field đang thiếu / {len(full_field_set)} field tổng."
+            )
+        else:
+            # Toàn bộ target_fields đều "rác" -> không còn field hợp lệ
+            # nào để search -> fallback full-scan thay vì trả [] im lặng.
+            logger.warning(
+                "⚠️ [T0] target_fields được truyền vào nhưng không field "
+                "nào hợp lệ sau khi đối chiếu schema — fallback full-scan."
+            )
+            all_fields = full_field_set
+    else:
+        # Fallback logic cũ — target_fields=None hoặc rỗng.
+        all_fields = full_field_set
+        logger.info(f"🔎 [T0] Full-Scan Mode — tìm toàn bộ {len(all_fields)} field.")
 
-    logger.info(f"\n{'='*60}")
-    logger.info(f"🔑 KEYWORD: {keyword}")
-    logger.info(f"   Lịch sử: Tìm {state.get('total_links_found',0)} / Cào {state.get('links_scraped',0)}")
-    logger.info(f"{'='*60}")
+    results: List[SearchResultItem] = []
+    for field in all_fields:
+        try:
+            field_results = await search_field(field, blackbook)
+        except Exception as e:
+            logger.error(f"❌ [T0] Lỗi khi search field '{field}': {e}")
+            continue
 
-    links = searcher.search_single_keyword(keyword)
-    state["total_links_found"] = state.get("total_links_found", 0) + len(links)
+        # [MỚI — BUG #2] Patch cờ field_already_filled: chỉ có ý nghĩa khi
+        # đang ở Gap-Aware Mode (target_fields không rỗng); ở Full-Scan Mode
+        # không có khái niệm "đã đầy" nên luôn để False.
+        is_gap_field = bool(target_fields) and field in (target_fields or [])
+        for item in field_results:
+            item["field_already_filled"] = (not is_gap_field) if target_fields else False
 
-    new_links = searcher.filter_new_links(links, state)
+        # [MỚI] Trừ quota URL cho từng kết quả của field này.
+        for item in field_results:
+            if budget is not None and not budget.consume_url():
+                if obs:
+                    obs.budget_exhausted(resource="url", agent="t0_search")
+                logger.warning("⚠️ [T0] URL budget exhausted — dừng thu thập.")
+                logger.info(f"✅ [T0] Hoàn thành sớm — {len(results)} URL / dừng giữa {len(all_fields)} field.")
+                return results
+            results.append(item)
 
-    for link in new_links:
-        if link["url"] not in state.get("found_urls", []):
-            state.setdefault("found_urls", []).append(link["url"])
+        # Anti-ban: nghỉ ngẫu nhiên giữa các field, giữ convention delay hiện có.
+        await asyncio.sleep(random.uniform(1.0, 3.0))
 
-    # Threshold 10: thực tế mỗi lần search trả về ~20 links, nếu tìm được >= 10
-    # mà không có URL mới thì keyword đã khai thác đủ → đánh dấu exhausted để
-    # chuyển sang keyword khác, tránh lãng phí delay 30-60s mỗi vòng lặp.
-    if not new_links and state.get("total_links_found", 0) >= 10:
-        state["is_exhausted"] = True
-        logger.warning("   ⚠️ Keyword EXHAUSTED (đã khai thác đủ)")
+    logger.info(
+        f"✅ [T0] Hoàn thành search pipeline — {len(results)} URL hợp lệ "
+        f"/ {len(all_fields)} field (mode="
+        f"{'gap_aware' if target_fields else 'full_scan'})."
+    )
+    return results
 
-    state["run_count"] = state.get("run_count", 0) + 1
-    searcher.save_keyword_state(state)
-    searcher._save_blackbook()
 
-    logger.info(f"   📊 Tìm: {len(links)}, Mới: {len(new_links)}")
-
-    if not new_links:
-        return None
-
-    return (keyword, new_links, state)
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    asyncio.run(run_search_pipeline({}))

@@ -17,6 +17,57 @@ from datetime import datetime, timezone, timedelta
 BAN_COOLDOWN_DAYS = 7        # Sau 7 ngày, domain tự động được thử lại
 BAN_THRESHOLD_FAILURES = 3   # Số lần fail liên tiếp trước khi ban tạm thời
 
+# =============================================================================
+# [CẬP NHẬT — Repo 1 Visual-First] ACADEMIC_DOMAIN_BLACKLIST
+# =============================================================================
+# Domain học thuật/khoa học bị HẠ ĐIỂM (không ban vĩnh viễn) ở t1_classify.py
+# (Gate 1) và tránh ưu tiên ở t0_search.py — Repo 1 giờ ưu tiên nguồn giàu
+# tín hiệu thị giác (concept art, worldbuilding wiki) thay vì nguồn khoa học
+# khách quan như bản cũ.
+ACADEMIC_DOMAIN_BLACKLIST = {
+    "nasa.gov", "esa.int", "nature.com", "science.org", "arxiv.org",
+    "researchgate.net", "academia.edu", "scholar.google.com",
+    "sciencedirect.com", "ncbi.nlm.nih.gov", "springer.com", "wiley.com",
+    "jstor.org", "pubmed.ncbi.nlm.nih.gov", "cell.com", "pnas.org",
+    "ieee.org", "acm.org", "frontiersin.org", "mdpi.com", "tandfonline.com",
+}
+
+ACADEMIC_DOMAIN_SUFFIXES = (".edu", ".ac.uk", ".ac.jp")
+
+
+def _is_domain_or_subdomain(netloc: str, banned_domain: str) -> bool:
+    """True nếu netloc CHÍNH XÁC là banned_domain, hoặc là bất kỳ subdomain
+    cấp nào của nó (vd. banned_domain='esa.int' -> match 'esa.int',
+    'm.esa.int', 'sciences.esa.int', 'a.b.esa.int'...).
+    So khớp không phân biệt hoa/thường.
+    """
+    netloc = (netloc or "").lower().strip()
+    banned_domain = (banned_domain or "").lower().strip()
+    if not netloc or not banned_domain:
+        return False
+    return netloc == banned_domain or netloc.endswith("." + banned_domain)
+
+
+def is_domain_or_subdomain_in(domain: str, blacklist) -> bool:
+    """True nếu `domain` khớp CHÍNH XÁC hoặc là subdomain của bất kỳ entry
+    nào trong `blacklist` (set/list các domain gốc, vd banned_domains,
+    ACADEMIC_DOMAIN_BLACKLIST). Dùng thay cho phép so sánh `in` (exact-match)
+    ở mọi nơi trong pipeline kiểm tra domain bị cấm.
+    """
+    domain = (domain or "").lower().strip()
+    if not domain:
+        return False
+    return any(_is_domain_or_subdomain(domain, banned) for banned in blacklist)
+
+
+def is_academic_domain(domain: str) -> bool:
+    """True nếu domain thuộc danh sách học thuật/khoa học (blacklist chính
+    xác hoặc hậu tố .edu/.ac.*). Dùng bởi t0_search.py và t1_classify.py."""
+    domain = (domain or "").lower()
+    if is_domain_or_subdomain_in(domain, ACADEMIC_DOMAIN_BLACKLIST):
+        return True
+    return any(domain.endswith(suffix) for suffix in ACADEMIC_DOMAIN_SUFFIXES)
+
 
 def is_banned(blackbook: dict, domain: str) -> bool:
     """True nếu domain đang bị ban VÀ vẫn còn trong thời gian cooldown."""

@@ -1,35 +1,22 @@
 """
 MONGO_SHARED — Client MongoDB & cache hash dùng chung toàn tiến trình
 ======================================================================
-BUG-3 FIX (QA Audit): trước đây `T4Deduplicate` và `T5Upload` mỗi class
-tự mở 1 `MongoClient` riêng, và `main.py` khởi tạo lại 2 class này cho
-MỖI keyword trong vòng lặp Pomodoro (tối đa MAX_LOOPS session × N keyword
-mỗi session) — không bao giờ đóng connection (resource leak), và
-`T4Deduplicate.__init__` quét TOÀN BỘ collection `world_rules` (không có
-TTL, phình to theo thời gian) mỗi lần khởi tạo (lỗ hổng hiệu năng).
+[CẬP NHẬT — Repo 1 Visual-First] Không đổi logic connection hiện có (1
+MongoClient duy nhất cho toàn tiến trình, đóng trong finally của main.py).
+Chỉ THÊM reference tới 2 collection mới (visual_blueprint_collection,
+fiction_knowledge) qua config.MONGO_TARGET_COLLECTIONS, dùng bởi t5_upload.py.
 
-Module này cung cấp:
-  - `get_shared_client()`  : 1 `MongoClient` DUY NHẤT cho toàn tiến trình,
-                             tái sử dụng qua mọi session/keyword.
-  - `get_shared_db()`      : database handle dựa trên client dùng chung.
-  - `get_existing_hashes()`: nạp `content_hash` từ `world_rules` ĐÚNG 1
-                             LẦN (cache module-level), các lần gọi sau
-                             trả về cùng 1 set đối tượng (mutate tại chỗ
-                             khi có hash mới, không query lại DB).
-  - `close_shared_client()`: đóng connection — gọi trong khối `finally`
-                             của `main.py` (`--loop` hoặc `--once`), đảm
-                             bảo connection luôn được giải phóng dù chạy
-                             thành công hay lỗi giữa chừng.
+Repo 1 không còn tham chiếu collection "world_rules" dưới bất kỳ hình thức
+nào — logic đó đã bị xoá hoàn toàn cùng đợt dọn dead code sang legacy/.
 """
 import logging
 
-from config import settings
+from config import MONGO_TARGET_COLLECTIONS, MONGODB_DB_NAME, MONGODB_URI
 
 logger = logging.getLogger(__name__)
 
 _client = None
 _db = None
-_existing_hashes: set[str] | None = None
 
 
 def get_shared_client():
@@ -39,13 +26,13 @@ def get_shared_client():
     if _client is not None:
         return _client
 
-    if not settings.MONGODB_URI:
+    if not MONGODB_URI:
         return None
 
     try:
         from pymongo import MongoClient
 
-        _client = MongoClient(settings.MONGODB_URI, serverSelectionTimeoutMS=5000)
+        _client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
         _client.admin.command("ping")
         logger.info("✅ MongoDB connected (shared client — dùng chung toàn tiến trình).")
     except Exception as e:
@@ -66,70 +53,70 @@ def get_shared_db():
     if client is None:
         return None
 
-    _db = client[settings.MONGODB_DB_NAME]
+    _db = client[MONGODB_DB_NAME]
     ensure_indexes(_db)
     return _db
 
 
 def ensure_indexes(db) -> None:
-    """Đảm bảo các Index cần thiết cho collection `world_rules` tồn tại.
-    Idempotent — `create_index` không lỗi nếu index cùng cấu hình đã có,
-    nên gọi lại nhiều lần (mỗi lần `get_shared_db()` kết nối lần đầu) là
-    an toàn.
+    """Đảm bảo các Index cần thiết tồn tại. Idempotent.
 
-    - `content_hash`: unique -> chống trùng lặp ở TẦNG DB (defense-in-depth
-      bên cạnh dedup ở tầng ứng dụng qua `get_existing_hashes()`).
-    - `keyword`, `rule_type`: tăng tốc truy vấn lọc theo các trường này.
+    - visual_blueprint_collection.visual_id: unique -> chống trùng lặp ở
+      tầng DB (defense-in-depth bên cạnh dedup ở t4_deduplicate.py).
+    - fiction_knowledge.visual_blueprint_ref: tăng tốc lookup ngược từ
+      fiction_knowledge sang visual_blueprint_collection (Gate 6b).
+    - world_rule_library.rule_id: unique -> mỗi rule chỉ có 1 định danh.
+    - world_rule_library.(entity_scope, active): tăng tốc load rule active
+      theo scope ở rule_library.load_active_rules() (Check G / Gate 5).
+    - lib_entities.(library_type, entity_id): unique compound -> lookup
+      trực tiếp; upsert theo cặp này đảm bảo idempotent qua nhiều run.
+    - lib_entities.(library_type, status): Repo 3/4 lọc nhanh
+      status="complete", bỏ qua bản ghi "incomplete".
+    Không có TTL index cho lib_entities — Library là dữ liệu nền, không
+    hết hạn (khác Reality Data §104 mục 2).
 
     `background=True` để không khóa collection khi tạo index trên dữ
     liệu đã có sẵn.
     """
     try:
-        coll = db[settings.MONGODB_COLLECTION_RULES]
-        coll.create_index("content_hash", unique=True, background=True)
-        coll.create_index("keyword", background=True)
-        coll.create_index("rule_type", background=True)
-        logger.info("✅ Đã đảm bảo indexes (content_hash unique, keyword, rule_type) cho 'world_rules'.")
+        blueprint_coll = db[MONGO_TARGET_COLLECTIONS["visual_blueprint_collection"]]
+        blueprint_coll.create_index("visual_id", unique=True, background=True)
+
+        fiction_coll = db[MONGO_TARGET_COLLECTIONS["fiction_knowledge"]]
+        fiction_coll.create_index("visual_blueprint_ref", background=True)
+
+        # [Global Rule Library]
+        rule_coll = db[MONGO_TARGET_COLLECTIONS["world_rule_library"]]
+        rule_coll.create_index("rule_id", unique=True, background=True)
+        rule_coll.create_index([("entity_scope", 1), ("active", 1)], background=True)
+
+        # [MỚI — Gate 6.5 / lib_entities]
+        lib_coll = db[MONGO_TARGET_COLLECTIONS["lib_entities"]]
+        lib_coll.create_index(
+            [("library_type", 1), ("entity_id", 1)],
+            unique=True,
+            background=True,
+        )
+        lib_coll.create_index(
+            [("library_type", 1), ("status", 1)],
+            background=True,
+        )
+
+        logger.info(
+            "✅ Đã đảm bảo indexes (visual_id unique, visual_blueprint_ref, "
+            "world_rule_library.rule_id unique, entity_scope+active, "
+            "lib_entities.(library_type,entity_id) unique, "
+            "lib_entities.(library_type,status)) cho "
+            "visual_blueprint_collection / fiction_knowledge / "
+            "world_rule_library / lib_entities."
+        )
     except Exception as e:
-        logger.warning(f"⚠️ Không thể tạo indexes cho 'world_rules': {e}")
-
-
-def get_existing_hashes() -> set[str]:
-    """Nạp toàn bộ `content_hash` đã tồn tại trong `world_rules` — CHỈ 1
-    LẦN cho toàn tiến trình (full collection scan tốn kém, không lặp lại
-    mỗi khi T4Deduplicate được khởi tạo lại cho keyword mới). Các bản ghi
-    mới thêm vào set này bằng `.add()` tại nơi gọi (T4), không query lại
-    DB để đồng bộ.
-
-    Trả về set rỗng (không raise) nếu không có kết nối DB — pipeline vẫn
-    chạy được ở chế độ offline, chỉ mất khả năng dedup chống trùng với dữ
-    liệu cũ đã có trên DB (dedup trong-batch vẫn hoạt động qua set này).
-    """
-    global _existing_hashes
-    if _existing_hashes is not None:
-        return _existing_hashes
-
-    _existing_hashes = set()
-    db = get_shared_db()
-    if db is None:
-        return _existing_hashes
-
-    try:
-        for doc in db[settings.MONGODB_COLLECTION_RULES].find({}, {"content_hash": 1}):
-            if "content_hash" in doc:
-                _existing_hashes.add(doc["content_hash"])
-        logger.info(f"✅ Đã nạp {len(_existing_hashes)} content_hash hiện có từ DB (1 lần duy nhất).")
-    except Exception as e:
-        logger.warning(f"⚠️ Không thể nạp existing_hashes từ MongoDB: {e}")
-
-    return _existing_hashes
+        logger.warning(f"⚠️ Không thể tạo indexes cho collection mới: {e}")
 
 
 def close_shared_client():
-    """Đóng MongoClient dùng chung — gọi trong `finally` ở `main.py` để
-    đảm bảo connection luôn được giải phóng, dù pipeline chạy `--loop`
-    hay `--once`, dù kết thúc thành công hay lỗi giữa chừng."""
-    global _client, _db, _existing_hashes
+    """Đóng MongoClient dùng chung — gọi trong finally ở main.py."""
+    global _client, _db
     if _client is not None:
         try:
             _client.close()
@@ -138,4 +125,3 @@ def close_shared_client():
             logger.warning(f"⚠️ Lỗi khi đóng MongoDB shared client: {e}")
     _client = None
     _db = None
-    _existing_hashes = None

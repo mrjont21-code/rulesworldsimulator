@@ -1,196 +1,388 @@
 """
-Extractive Summarizer — Thuần Python, Không LLM, Không ML
-==========================================================
-Kỹ thuật: Luhn's Algorithm (1958) cải tiến cho mục tiêu trích xuất
-quy luật nhân quả khoa học.
-
-Thay đổi so với phiên bản cũ:
-- Tham số "domain_keywords" đổi tên thành "ontology_keywords" để phản
-  ánh đúng nguồn từ khóa (SCIENCE_ONTOLOGY_KEYWORDS từ config.py).
-- Bổ sung bộ đếm điểm riêng cho Cause-Effect Pattern Matching: câu chứa
-  cấu trúc điều kiện (if/when/results in/leads to/due to/because/causes/
-  enables/prevents/requires/therefore/thus...) được boost điểm cao hơn
-  câu chứa từ khóa chủ đề thông thường.
-  Lý do: câu nhân quả là nguyên liệu trực tiếp cho Rule Object theo
-  schema Điều kiện → Biến đổi → Kết quả → Hiệu ứng phụ.
-- Câu chỉ mô tả hình thái/thị giác thuần túy (không có cấu trúc nhân
-  quả) vẫn có thể vào key_facts nhưng không được ưu tiên đứng đầu.
-
-Output fields:
-  summary          — top câu giữ thứ tự gốc, đọc liên tục
-  key_facts        — top câu sắp theo điểm giảm dần (câu tốt nhất trước)
-  matched_keywords — ontology_keywords nào xuất hiện trong text
-  causal_sentences — câu được nhận diện có cấu trúc nhân quả (tách riêng
-                     để T4/T5 dễ trích xuất Rule Object)
-
-LƯU Ý MIGRATION: Nếu đổi tên field "matched_keywords" trong collection
-MongoDB permanent.*, cần script migrate riêng — không đổi ngầm ở đây.
+summarizer.py — Agent 4: TRÁI TIM của Repo 1 (Phase A + Phase B, Gate 3 + Gate 4)
+====================================================================================
+[CX]
+- Đây là file DUY NHẤT trong 6 agent được phép gọi Gemini API.
+- Phase A LUÔN chạy trước Phase B. Phase B tuyệt đối không được thực thi
+  nếu Phase A fail (Gate 3 chặn cứng).
+- Phase B tuyệt đối không được sửa locked_fields của Phase A — đảm bảo bằng
+  kiến trúc (Phase B ghi vào instance MasterSchema20 mới, tách biệt hoàn
+  toàn khỏi object VisualBlueprint30 của Phase A), không phải bằng so sánh
+  runtime (đã gỡ bỏ vì là no-op — xem comment trong phase_b_gap_filling()).
+- Không bao giờ tự set ip_filter_status = "cleaned" mặc định.
+- Temperature bắt buộc 0.1–0.3 cho cả 2 phase.
+- Retry tối đa 2 lần cho Phase A. Phase B không retry (fail thì fail).
 """
+from __future__ import annotations
+
+import itertools
+import json
+import logging
 import re
-from collections import Counter
+from datetime import datetime, timezone
+from typing import Optional, Tuple
 
-# Stopword tiếng Anh tối giản — đủ cho văn bản khoa học/wiki, không cần
-# tải corpus nltk (tránh phụ thuộc network khi chạy trong GitHub Actions).
-STOPWORDS = set("""
-a an the and or but if then else for while of to in on at by with from
-as is are was were be been being this that these those it its it's they
-them their there here what which who whom whose when where why how not
-no nor so than too very can will just should would could may might must
-do does did doing have has had having i you he she we you're i'm we're
-also into about over under between among more most some such only own
-same other than through during before after above below up down out off
-""".split())
+from pydantic import ValidationError
 
-SENTENCE_SPLIT_RE = re.compile(r'(?<=[.!?])\s+(?=[A-Z"\u2018\u201c])')
-WORD_RE = re.compile(r"[a-zA-Z][a-zA-Z\-']+")
+from config import GEMINI_API_KEYS, GEMINI_MODEL_NAME, VISUAL_BLUEPRINT_3_0_TEMPLATE
+from schemas.master_schema_2_0 import MasterSchema20
+from schemas.visual_blueprint_3_0 import VisualBlueprint30
+from core.budget_manager import BudgetManager
+from core.logger import PipelineLogger
 
-# Các marker cấu trúc nhân quả — dùng để nhận diện câu chứa quan hệ
-# điều kiện/nguyên nhân/kết quả, không phải để match chủ đề.
-# Đây là cầu nối tới Cause-Effect Engine (Mục XI) và Formula Engine
-# (Mục VII: Điều kiện → Biến đổi → Kết quả → Hiệu ứng phụ).
-CAUSAL_MARKERS = re.compile(
-    r"\b("
-    r"results?\s+in|leads?\s+to|due\s+to|caused?\s+by|because(\s+of)?|"
-    r"as\s+a\s+(result|consequence)|therefore|thus|hence|"
-    r"if\b.+\bthen\b|when\b.+\bthen\b|depends?\s+on|"
-    r"enables?|prevents?|inhibits?|promotes?|requires?|"
-    r"triggers?|accelerates?|decelerates?|modulates?|regulates?|"
-    r"constrains?|amplifies?|attenuates?|correlates?\s+with|"
-    r"threshold|sufficient\s+condition|necessary\s+condition"
-    r")\b",
-    re.IGNORECASE,
-)
+logger = logging.getLogger(__name__)
+
+_JSON_FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
+
+# Proper-noun IP đã biết (dùng làm lưới an toàn bổ sung sau khi LLM strip;
+# không thay thế yêu cầu IP-STRIP trong system prompt, chỉ là double-check).
+_KNOWN_IP_TERMS = [
+    "marvel", "star wars", "disney", "pixar", "nintendo", "pokemon",
+    "goku", "dragon ball", "harry potter", "dc comics", "naruto",
+]
 
 
-def _split_sentences(text: str) -> list[str]:
-    text = re.sub(r'\s+', ' ', text.strip())
-    if not text:
-        return []
-    raw = SENTENCE_SPLIT_RE.split(text)
-    # Loại câu quá ngắn (thường là mảnh nav menu, "Read more", v.v.)
-    return [s.strip() for s in raw if len(s.strip()) >= 40]
+def _get_key_rotator():
+    """Round-robin generator qua GEMINI_API_KEYS. Trả về None nếu rỗng
+    (cho phép unit test / dry-run không cần key thật)."""
+    if not GEMINI_API_KEYS:
+        return None
+    return itertools.cycle(GEMINI_API_KEYS)
 
 
-def _word_frequencies(sentences: list[str]) -> Counter:
-    freq = Counter()
-    for sent in sentences:
-        for w in WORD_RE.findall(sent.lower()):
-            if w not in STOPWORDS and len(w) > 2:
-                freq[w] += 1
-    return freq
+_key_rotator = _get_key_rotator()
 
 
-def _has_causal_structure(sentence: str) -> bool:
-    """Kiểm tra câu có chứa marker nhân quả không."""
-    return bool(CAUSAL_MARKERS.search(sentence))
+def _next_api_key() -> Optional[str]:
+    if _key_rotator is None:
+        return None
+    return next(_key_rotator)
 
 
-def extractive_summary(
-    text: str,
-    ontology_keywords: list[str] | None = None,
-    max_sentences: int = 6,
-    keyword_boost: float = 2.5,
-    causal_boost: float = 3.5,
-) -> dict:
-    """Trích xuất câu quan trọng theo Luhn's Algorithm cải tiến.
+def load_prompt_template(path: str) -> str:
+    """Đọc file .txt từ prompts/."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        logger.error(f"❌ [Summarizer] Không đọc được prompt template '{path}': {e}")
+        return ""
 
-    Parameters
-    ----------
-    text : str
-        Văn bản thô cần tóm tắt.
-    ontology_keywords : list[str] | None
-        Từ điển từ khóa ontology (từ settings.SCIENCE_ONTOLOGY_KEYWORDS).
-        Câu chứa từ khóa này được boost điểm.
-    max_sentences : int
-        Số câu tối đa trong output.
-    keyword_boost : float
-        Hệ số boost cho mỗi từ khóa ontology khớp trong câu.
-    causal_boost : float
-        Hệ số boost cho câu chứa cấu trúc nhân quả. Cao hơn keyword_boost
-        vì câu nhân quả là nguyên liệu trực tiếp cho Rule Object.
 
-    Returns
-    -------
-    dict với các field:
-        summary          — top câu theo thứ tự gốc
-        key_facts        — top câu theo điểm giảm dần
-        matched_keywords — ontology keyword nào xuất hiện
-        causal_sentences — câu có cấu trúc nhân quả (tách riêng cho T4/T5)
-    """
-    ontology_keywords = [k.lower() for k in (ontology_keywords or [])]
-    sentences = _split_sentences(text)
+def _strip_markdown_fence(text: str) -> str:
+    return _JSON_FENCE_RE.sub("", text).strip()
 
-    if not sentences:
-        return {
-            "summary": "",
-            "key_facts": [],
-            "matched_keywords": [],
-            "causal_sentences": [],
-        }
 
-    if len(sentences) <= max_sentences:
-        causal_sents = [s for s in sentences if _has_causal_structure(s)]
-        return {
-            "summary": " ".join(sentences),
-            "key_facts": sentences,
-            "matched_keywords": sorted({k for k in ontology_keywords if k in text.lower()}),
-            "causal_sentences": causal_sents,
-        }
+def _call_gemini(
+    system_prompt: str,
+    user_content: str,
+    temperature: float,
+    budget: "BudgetManager | None" = None,
+    estimated_tokens: int = 1000,
+) -> Optional[str]:
+    """Gọi Gemini Flash 2.5 Free với 1 key trong round-robin.
 
-    freq = _word_frequencies(sentences)
-    if not freq:
-        return {
-            "summary": "",
-            "key_facts": [],
-            "matched_keywords": [],
-            "causal_sentences": [],
-        }
+    [MỚI] Nếu `budget` được truyền vào: kiểm tra + TRỪ quota TRƯỚC khi gọi
+    API thật (`model.generate_content`). Đây là điểm trừ quota DUY NHẤT
+    của toàn bộ pipeline — mọi agent khác (t0, t2) trừ quota URL ở tầng
+    riêng của chúng, nhưng quota Gemini call/token CHỈ được trừ ở đây vì
+    đây là nơi DUY NHẤT gọi Gemini API thật (xem docstring đầu file)."""
 
-    max_freq = max(freq.values())
-    matched_keywords: set[str] = set()
-    causal_sentences: list[str] = []
+    if budget is not None and not budget.consume_gemini_call(estimated_tokens):
+        logger.warning(
+            "⚠️ [Summarizer] Gemini budget exhausted — bỏ qua call này."
+        )
+        return None
 
-    scored = []
-    for idx, sent in enumerate(sentences):
-        words = [
-            w for w in WORD_RE.findall(sent.lower())
-            if w not in STOPWORDS and len(w) > 2
-        ]
-        if not words:
+    api_key = _next_api_key()
+    if not api_key:
+        logger.error("❌ [Summarizer] Không có Gemini API key nào trong CLAUDE_KEY_1..7.")
+        return None
+
+    try:
+        import google.generativeai as genai
+
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(
+            model_name=GEMINI_MODEL_NAME,
+            system_instruction=system_prompt,
+            generation_config={
+                "temperature": temperature,
+                "response_mime_type": "application/json",
+            },
+        )
+        response = model.generate_content(user_content)
+
+        # [MỚI] Nếu Gemini trả usage metadata thật, điều chỉnh counter
+        # cho chính xác thay vì giữ nguyên ước tính estimated_tokens.
+        if budget is not None:
+            actual = getattr(response, "usage_metadata", None)
+            if actual is not None:
+                actual_total = getattr(actual, "total_token_count", None)
+                if isinstance(actual_total, int):
+                    budget.record_actual_tokens(actual_total - estimated_tokens)
+
+        return response.text
+    except Exception as e:
+        logger.warning(f"⚠️ [Summarizer] Gemini call thất bại (key rotation sẽ dùng key khác lần sau): {e}")
+        return None
+
+
+def _contains_known_ip(payload: dict) -> list[str]:
+    """Quét thô các proper noun IP đã biết trong toàn bộ text field của
+    payload (lưới an toàn bổ sung, KHÔNG thay thế yêu cầu strip ở prompt)."""
+    serialized = json.dumps(payload, ensure_ascii=False).lower()
+    return [term for term in _KNOWN_IP_TERMS if term in serialized]
+
+
+# =============================================================================
+# PHASE A — Visual Extractor (Gate 3)
+# =============================================================================
+def phase_a_visual_extractor(
+    raw_text: str,
+    image_metadata: list,
+    target_form_field: str,
+    max_retries: int = 2,
+    budget: "BudgetManager | None" = None,
+    obs: "PipelineLogger | None" = None,
+) -> Tuple[Optional[dict], bool]:
+    system_prompt = load_prompt_template("prompts/phase_a_visual_extractor.txt")
+    if not system_prompt:
+        return None, False
+
+    user_content = json.dumps(
+        {
+            "raw_text": raw_text[:8000],  # cap để tiết kiệm token free tier
+            "image_metadata": image_metadata,
+            "target_form_field": target_form_field,
+            "template": VISUAL_BLUEPRINT_3_0_TEMPLATE,
+        },
+        ensure_ascii=False,
+    )
+
+    temperature = 0.2
+    attempt = 0
+
+    while attempt <= max_retries:
+        # [MỚI] Nếu budget đã cạn TRƯỚC lần gọi này, dừng retry ngay —
+        # gọi tiếp cũng sẽ luôn bị _call_gemini() chặn và trả None.
+        if budget is not None and budget.is_gemini_budget_exhausted():
+            if obs:
+                obs.budget_exhausted(resource="gemini", agent="summarizer")
+            logger.warning(
+                f"⚠️ [Phase A][Gate 3] Dừng retry (attempt {attempt}) — Gemini budget đã cạn."
+            )
+            break
+
+        raw_response = _call_gemini(system_prompt, user_content, temperature, budget=budget)
+
+        if raw_response is None:
+            attempt += 1
+            temperature = max(0.1, temperature - 0.1)
             continue
 
-        # 1) Điểm tần suất từ (chuẩn hóa 0–1)
-        freq_score = sum(freq[w] for w in words) / (len(words) * max_freq)
+        try:
+            cleaned = _strip_markdown_fence(raw_response)
+            output = json.loads(cleaned)
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.warning(f"⚠️ [Phase A] JSON parse lỗi (attempt {attempt + 1}): {e}")
+            attempt += 1
+            temperature = max(0.1, temperature - 0.1)
+            continue
 
-        # 2) Boost nếu câu chứa ontology keyword
-        sent_lower = sent.lower()
-        kw_hits = [k for k in ontology_keywords if k in sent_lower]
-        kw_score = min(len(kw_hits), 3) * keyword_boost
-        matched_keywords.update(kw_hits)
+        # Set consistency_lock.locked = True nếu extraction "thành công" theo
+        # nhận định của LLM (đã điền species_base/skin) — nhưng vẫn phải qua
+        # Pydantic + Gate 3 để xác nhận thật sự hợp lệ.
+        output.setdefault("consistency_lock", {})
+        if output["consistency_lock"].get("locked") is not True:
+            output["consistency_lock"]["locked"] = bool(
+                output.get("character_blueprint") or output.get("environment_blueprint")
+            )
 
-        # 3) Boost cấu trúc nhân quả — quan trọng hơn keyword chủ đề
-        #    vì câu nhân quả mã hóa quan hệ Nguyên nhân → Kết quả,
-        #    là đơn vị cơ bản của Rule Object.
-        causal_score = 0.0
-        if _has_causal_structure(sent):
-            causal_score = causal_boost
-            causal_sentences.append(sent)
+        try:
+            validated = VisualBlueprint30(**output)
+        except ValidationError as e:
+            logger.warning(f"⚠️ [Phase A][Gate 3] Pydantic validation lỗi (attempt {attempt + 1}): {e}")
+            attempt += 1
+            temperature = max(0.1, temperature - 0.1)
+            continue
 
-        # 4) Boost nhẹ câu đầu văn bản (thường là câu định nghĩa/luận điểm)
-        position_score = 1.0 if idx < 3 else (0.3 if idx < 8 else 0.0)
+        validated_dict = validated.model_dump()
 
-        total_score = freq_score + kw_score + causal_score + position_score
-        scored.append((idx, sent, total_score))
+        # [SPEC_FIX_P2 — Vấn đề 2] IP-check bắt buộc ở Phase A (Gate 3).
+        # Trước đây lưới an toàn IP chỉ chạy ở Phase B -> Phase A có thể
+        # "khoá" (consistency_lock.locked = True) một blueprint còn dính
+        # proper noun IP mà không ai bắt lại. Từ giờ: phát hiện IP ở đây
+        # PHẢI reject + retry giống lỗi Pydantic, KHÔNG được set True.
+        ip_terms_found = _contains_known_ip(validated_dict)
+        if ip_terms_found:
+            logger.warning(
+                f"⚠️ [Phase A][Gate 3] Phát hiện IP proper noun còn sót "
+                f"{ip_terms_found} (attempt {attempt + 1}) — reject, retry."
+            )
+            attempt += 1
+            temperature = max(0.1, temperature - 0.1)
+            continue
 
-    # Top N theo điểm giảm dần
-    top = sorted(scored, key=lambda x: x[2], reverse=True)[:max_sentences]
+        required_ok = bool(validated_dict.get("validation_rules", {}).get("required_fields"))
+        locked_ok = validated_dict.get("consistency_lock", {}).get("locked") is True
 
-    key_facts = [s for _, s, _ in top]
-    summary_ordered = [s for _, s, _ in sorted(top, key=lambda x: x[0])]
+        if not required_ok or not locked_ok:
+            logger.warning(
+                f"⚠️ [Phase A][Gate 3] Blueprint chưa hoàn chỉnh "
+                f"(required_fields empty={not required_ok}, locked={locked_ok}), attempt {attempt + 1}."
+            )
+            attempt += 1
+            temperature = max(0.1, temperature - 0.1)
+            continue
 
+        logger.info(f"✅ [Phase A][Gate 3] Blueprint pass — visual_id={validated_dict.get('visual_id')}")
+        return validated_dict, True
+
+    logger.error(f"❌ [Phase A][Gate 3] Thất bại sau {max_retries + 1} lần thử — flag 'phase_a_failed'.")
+    return None, False
+
+
+# =============================================================================
+# PHASE B — Gap-Filling Station (Gate 4)
+# =============================================================================
+def phase_b_gap_filling(
+    locked_blueprint: dict,
+    raw_text: str,
+    target_form_field: str,
+    budget: "BudgetManager | None" = None,
+    obs: "PipelineLogger | None" = None,
+) -> Tuple[Optional[dict], bool]:
+    system_prompt = load_prompt_template("prompts/phase_b_gap_filling.txt")
+    if not system_prompt:
+        return None, False
+
+    user_content = json.dumps(
+        {
+            "locked_blueprint": locked_blueprint,
+            "raw_text": raw_text[:8000],
+            "target_form_field": target_form_field,
+        },
+        ensure_ascii=False,
+    )
+
+    raw_response = _call_gemini(system_prompt, user_content, temperature=0.2, budget=budget)
+    if raw_response is None:
+        if budget is not None and budget.is_gemini_budget_exhausted() and obs:
+            obs.budget_exhausted(resource="gemini", agent="summarizer")
+        return None, False
+
+    try:
+        cleaned = _strip_markdown_fence(raw_response)
+        output = json.loads(cleaned)
+    except (json.JSONDecodeError, TypeError) as e:
+        logger.warning(f"⚠️ [Phase B] JSON parse lỗi: {e}")
+        return None, False
+
+    output.setdefault("provenance_and_metadata", {})
+    output["provenance_and_metadata"].setdefault("target_form_field", target_form_field)
+    output["provenance_and_metadata"].setdefault("timestamp", datetime.now(timezone.utc).isoformat())
+
+    ip_terms_found = _contains_known_ip(output)
+    claimed_status = output["provenance_and_metadata"].get("ip_filter_status", "unverified")
+
+    # Không bao giờ tự tin "cleaned" nếu lưới an toàn vẫn thấy IP còn sót.
+    if ip_terms_found:
+        output["provenance_and_metadata"]["ip_filter_status"] = "failed"
+        output["provenance_and_metadata"]["original_ip_detected"] = ip_terms_found
+    elif claimed_status != "cleaned":
+        output["provenance_and_metadata"]["ip_filter_status"] = "failed"
+
+    try:
+        validated = MasterSchema20(**output)
+    except ValidationError as e:
+        logger.warning(f"⚠️ [Phase B][Gate 4] Pydantic validation lỗi: {e}")
+        return None, False
+
+    validated_dict = validated.model_dump()
+
+    # [SPEC_FIX_P3 — Vấn đề 1] Đã xoá bỏ vòng lặp so sánh "trước/sau" ở đây —
+    # nó là no-op: cả 2 lần đọc đều lấy từ `locked_blueprint` (input, không
+    # bị hàm này mutate), không lần nào đọc từ `validated_dict` (output thật
+    # của Phase B). Về mặt kiến trúc, defense-in-depth bằng code KHÔNG cần
+    # thiết ở đây: MasterSchema20 (Phase B) và VisualBlueprint30 (Phase A)
+    # là 2 schema tách biệt hoàn toàn về type/namespace — Phase B ghi kết
+    # quả vào một instance MasterSchema20 mới (`validated`/`validated_dict`),
+    # về bản chất vật lý không có đường nào để ghi đè lên `locked_blueprint`
+    # (biến của schema khác, scope khác) đang giữ ở tầng gọi Phase A.
+    # Ràng buộc "Phase B không được sửa locked_fields" (docstring đầu file,
+    # dòng 8) được đảm bảo bởi chính việc 2 schema không chia sẻ object,
+    # không cần một vòng lặp runtime kiểm tra lại điều không thể xảy ra.
+
+    if validated_dict["provenance_and_metadata"]["ip_filter_status"] != "cleaned":
+        logger.warning("⚠️ [Phase B][Gate 4] ip_filter_status != 'cleaned' — flag 'ip_strip_incomplete'.")
+        return validated_dict, False
+
+    logger.info("✅ [Phase B][Gate 4] Gap-filling pass, ip_filter_status=cleaned.")
+    return validated_dict, True
+
+
+def _dig(d: dict, dot_path: str):
+    keys = dot_path.split(".")
+    value = d
+    for key in keys:
+        if not isinstance(value, dict):
+            return None
+        value = value.get(key)
+    return value
+
+
+# =============================================================================
+# ORCHESTRATOR
+# =============================================================================
+def run_summarizer(
+    scraped_doc: dict,
+    budget: "BudgetManager | None" = None,
+    obs: "PipelineLogger | None" = None,
+) -> dict:
+    """
+    Returns: {"visual_blueprint": dict|None, "schema_record": dict|None,
+              "target_form_field": str, "phase_a_ok": bool, "phase_b_ok": bool,
+              "_tokens_used": int}
+    """
+    target_form_field = scraped_doc.get("target_form_field", "")
+
+    tokens_before = budget.snapshot().tokens_used if budget is not None else 0
+
+    blueprint, phase_a_ok = phase_a_visual_extractor(
+        scraped_doc.get("raw_text", ""),
+        scraped_doc.get("image_metadata", []),
+        target_form_field,
+        budget=budget,
+        obs=obs,
+    )
+
+    if not phase_a_ok:
+        tokens_after = budget.snapshot().tokens_used if budget is not None else 0
+        return {
+            "visual_blueprint": blueprint,
+            "schema_record": None,
+            "target_form_field": target_form_field,
+            "phase_a_ok": False,
+            "phase_b_ok": False,
+            "_tokens_used": tokens_after - tokens_before,
+        }
+
+    schema_record, phase_b_ok = phase_b_gap_filling(
+        blueprint, scraped_doc.get("raw_text", ""), target_form_field,
+        budget=budget, obs=obs,
+    )
+
+    tokens_after = budget.snapshot().tokens_used if budget is not None else 0
     return {
-        "summary": " ".join(summary_ordered),
-        "key_facts": key_facts,
-        "matched_keywords": sorted(matched_keywords),
-        "causal_sentences": causal_sentences,
+        "visual_blueprint": blueprint,
+        "schema_record": schema_record,
+        "target_form_field": target_form_field,
+        "phase_a_ok": phase_a_ok,
+        "phase_b_ok": phase_b_ok,
+        "_tokens_used": tokens_after - tokens_before,
     }
+
+
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)

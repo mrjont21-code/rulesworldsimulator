@@ -1,32 +1,13 @@
-# =============================================================================
-# REQUIREMENTS.txt — Repo 1 (rulesworldsimulator), sau khi Tổng kỹ sư hàn
-# =============================================================================
-# File này liệt kê TOÀN BỘ thư viện Python bên thứ 3 mà pipeline đã hàn
-# (T0 Search -> T1 Classify -> T2 Scrape -> T3 Normalize -> T4 Dedup ->
-# T5 Upload -> T6 World Forge -> rule_engine Validate) thực sự import.
-#
-# `requirements.txt` (chữ thường) đã có sẵn trong repo và vẫn tương thích;
-# file này là bản tổng hợp đầy đủ hơn theo yêu cầu tích hợp, dùng để
-# `pip install -r REQUIREMENTS.txt` cho môi trường CI/CD (GitHub Actions).
+# Repo 1 (visual_first_v2) — runtime dependencies
+# Pinned to major versions known-good with the T0-T5 harvester pipeline.
 
-# --- MongoDB (T4 dedup cache, T5 upload, log run) ---
-pymongo>=4.6.0
+beautifulsoup4>=4.12,<5
+lxml>=5.0,<6
+httpx>=0.27,<1
+pydantic>=2.6,<3
+pymongo>=4.6,<5
+scikit-learn>=1.4,<2
+google-generativeai>=0.5,<1
 
-# --- Scraping / Anti-ban (T0 search UI, T2 scrape) ---
-playwright>=1.40.0
-curl_cffi>=0.7.0
-httpx>=0.25.0            # fallback khi curl_cffi không khả dụng (t2_scrape.py)
-beautifulsoup4>=4.12.0
-lxml>=4.9.0
-
-# --- Data validation / schema (dùng cho schemas/, phòng khi migrate từ
-#     dataclass thuần sang pydantic model để validate Blueprint trước khi
-#     ghi MongoDB — CHƯA bắt buộc ở phiên bản hiện tại vì schemas/*.py
-#     đang dùng @dataclass thuần) ---
-pydantic>=2.0.0
-
-# --- Optional: trích xuất nội dung / PDF (t2_scrape.py, fallback skills) ---
-pdfplumber>=0.10.0
-trafilatura>=1.6.0
-readability-lxml>=0.8.1
-newspaper3k>=0.2.8
+# Test tooling
+pytest>=8.0,<9
