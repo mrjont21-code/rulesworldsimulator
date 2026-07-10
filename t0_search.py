@@ -101,7 +101,11 @@ async def _fetch_search_results(
         return []
 
     try:
-        headers = stealth.get_stealth_headers()
+        # [FIX] get_stealth_headers() trả về Tuple[str, Dict] — (ua, headers).
+        # Trước đây gán thẳng cả tuple vào `headers` khiến httpx.Headers()
+        # cố unpack chuỗi UA thành (k, v) -> ValueError ngay lập tức, tức
+        # MỌI request đều rơi vào except bên dưới trước khi chạm mạng.
+        _, headers = stealth.get_stealth_headers()
         resp = await client.get(url, headers=headers, timeout=15.0)
         resp.raise_for_status()
         if domain:
@@ -127,7 +131,11 @@ async def _fetch_search_results(
         return []
 
 
-MAX_FALLBACK_ENGINES = 3  # trần số engine thử/query, tránh đốt quota khi tất cả đều fail
+MAX_FALLBACK_ENGINES = 4  # [FIX] trước là 3 -> luôn bỏ sót engine priority=4
+                          # (Google) trong search_engines.json, khiến fallback
+                          # không bao giờ chạm tới engine cuối cùng dù 3 engine
+                          # đầu đều down. Trần số engine thử/query, tránh đốt
+                          # quota khi tất cả đều fail.
 
 
 async def _fetch_with_fallback(

@@ -131,7 +131,11 @@ async def scrape_url(
         return None
 
     try:
-        headers = stealth.get_stealth_headers()
+        # [FIX] get_stealth_headers() trả về Tuple[str, Dict] — (ua, headers).
+        # Bug giống hệt t0_search.py: gán thẳng tuple vào `headers` khiến
+        # httpx.Headers() cố unpack chuỗi UA thành (k, v) -> ValueError ngay
+        # lập tức, MỌI request scrape đều fail trước khi chạm mạng.
+        _, headers = stealth.get_stealth_headers()
         resp = await client.get(url, headers=headers, timeout=20.0)
         resp.raise_for_status()
         if domain:
