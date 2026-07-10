@@ -1,6 +1,6 @@
 name: Repo1 CI (Lint & Unit Tests)
 
-# Chạy trên mọi push/PR đụng tới thư mục repo1/ — KHÔNG chạm MongoDB thật,
+# Chạy trên mọi push/PR — KHÔNG chạm MongoDB thật,
 # KHÔNG gọi Gemini API thật. Mục tiêu duy nhất: bắt lỗi cú pháp/import và
 # đảm bảo bộ unit test (rule_library, t3_normalize Check G) luôn xanh trước
 # khi merge, theo nguyên tắc "Observability > Complexity" (mục 105 SPEC).
@@ -8,17 +8,8 @@ name: Repo1 CI (Lint & Unit Tests)
 on:
   push:
     branches: [main]
-    paths:
-      - "repo1/**"
-      - ".github/workflows/ci.yml"
   pull_request:
     branches: [main]
-    paths:
-      - "repo1/**"
-
-defaults:
-  run:
-    working-directory: repo1
 
 jobs:
   lint-and-test:
@@ -36,7 +27,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: "pip"
-          cache-dependency-path: repo1/requirements.txt
+          cache-dependency-path: requirements.txt
 
       - name: Install dependencies
         run: |
