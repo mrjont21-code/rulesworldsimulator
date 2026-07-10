@@ -105,12 +105,49 @@ class _FailingDB:
         return _FailingCollection()
 
 
+class _OkCollection:
+    def __init__(self, rules):
+        self._rules = rules
+
+    def find(self, *_args, **_kwargs):
+        return list(self._rules)
+
+
+class _OkDB:
+    def __init__(self, rules):
+        self._rules = rules
+
+    def __getitem__(self, _name):
+        return _OkCollection(self._rules)
+
+
 class TestLoadActiveRules(unittest.TestCase):
     def test_none_db_returns_empty_fail_open(self):
-        self.assertEqual(load_active_rules(None), [])
+        # [FIX] load_active_rules() trả (rules, rule_check_skipped) — db=None
+        # là case fail-open thật sự (không có kết nối Mongo) nên
+        # rule_check_skipped phải là True.
+        rules, rule_check_skipped = load_active_rules(None)
+        self.assertEqual(rules, [])
+        self.assertTrue(rule_check_skipped)
 
     def test_failing_db_returns_empty_fail_open(self):
-        self.assertEqual(load_active_rules(_FailingDB()), [])
+        # Mongo query lỗi -> cũng là fail-open thật sự -> rule_check_skipped=True.
+        rules, rule_check_skipped = load_active_rules(_FailingDB())
+        self.assertEqual(rules, [])
+        self.assertTrue(rule_check_skipped)
+
+    def test_success_returns_rules_and_skipped_false(self):
+        # Mongo OK, có rule active -> rule_check_skipped PHẢI là False,
+        # kể cả khi collection rỗng (0 rule active là trạng thái hợp lệ,
+        # không phải lỗi/fail-open).
+        rules, rule_check_skipped = load_active_rules(_OkDB([{"rule_id": "R1"}]))
+        self.assertEqual(rules, [{"rule_id": "R1"}])
+        self.assertFalse(rule_check_skipped)
+
+    def test_success_empty_collection_not_treated_as_skipped(self):
+        rules, rule_check_skipped = load_active_rules(_OkDB([]))
+        self.assertEqual(rules, [])
+        self.assertFalse(rule_check_skipped)
 
 
 if __name__ == "__main__":
