@@ -26,6 +26,8 @@ class BudgetSnapshot:
     tokens_used: int
     tokens_max: int
     elapsed_seconds: float
+    browser_calls_used: int = 0
+    browser_calls_max: int = 0
 
     @property
     def urls_remaining(self) -> int:
@@ -51,6 +53,8 @@ class BudgetSnapshot:
             "tokens_max": self.tokens_max,
             "tokens_remaining": self.tokens_remaining,
             "elapsed_seconds": round(self.elapsed_seconds, 2),
+            "browser_calls_used": self.browser_calls_used,
+            "browser_calls_max": self.browser_calls_max,
         }
 
 
@@ -69,26 +73,35 @@ class BudgetManager:
     DEFAULT_MAX_URLS = 150
     DEFAULT_MAX_GEMINI_CALLS = 300
     DEFAULT_MAX_TOKENS = 300_000
+    DEFAULT_MAX_BROWSER_CALLS = 15  # Playwright ~3-8s/lần, trần thấp tránh vượt 30 phút
 
     def __init__(
         self,
         max_urls: Optional[int] = None,
         max_gemini_calls: Optional[int] = None,
         max_tokens: Optional[int] = None,
+        max_browser_calls: Optional[int] = None,   # [MỚI]
     ):
-        self.max_urls = max_urls or int(
+        self.max_urls = max_urls if max_urls is not None else int(
             os.getenv("BUDGET_MAX_URLS", str(self.DEFAULT_MAX_URLS))
         )
-        self.max_gemini_calls = max_gemini_calls or int(
+        self.max_gemini_calls = max_gemini_calls if max_gemini_calls is not None else int(
             os.getenv("BUDGET_MAX_GEMINI_CALLS", str(self.DEFAULT_MAX_GEMINI_CALLS))
         )
-        self.max_tokens = max_tokens or int(
+        self.max_tokens = max_tokens if max_tokens is not None else int(
             os.getenv("BUDGET_MAX_TOKENS", str(self.DEFAULT_MAX_TOKENS))
+        )
+        # [FIX] "max_browser_calls or ..." coi 0 là falsy -> im lặng rơi về
+        # default 15 dù caller cố tình truyền 0 (budget cạn kiệt). Dùng
+        # "is not None" để 0 được tôn trọng đúng nghĩa.
+        self.max_browser_calls = max_browser_calls if max_browser_calls is not None else int(
+            os.getenv("BUDGET_MAX_BROWSER_CALLS", str(self.DEFAULT_MAX_BROWSER_CALLS))
         )
 
         self._urls_used: int = 0
         self._gemini_calls_used: int = 0
         self._tokens_used: int = 0
+        self._browser_calls_used: int = 0          # [MỚI]
 
         self._lock = threading.Lock()
         self._start_time = time.monotonic()
@@ -117,6 +130,14 @@ class BudgetManager:
             self._tokens_used += estimated_tokens
             return True
 
+    def consume_browser_call(self, count: int = 1) -> bool:
+        """Gọi TRƯỚC khi dùng tier3_browser (Playwright). True nếu còn budget."""
+        with self._lock:
+            if self._browser_calls_used + count > self.max_browser_calls:
+                return False
+            self._browser_calls_used += count
+            return True
+
     def record_actual_tokens(self, delta_tokens: int) -> None:
         """Điều chỉnh counter khi có usage metadata thật từ Gemini API.
         `delta_tokens` = actual_tokens - estimated_tokens đã cộng trước đó
@@ -135,6 +156,8 @@ class BudgetManager:
                 tokens_used=self._tokens_used,
                 tokens_max=self.max_tokens,
                 elapsed_seconds=time.monotonic() - self._start_time,
+                browser_calls_used=self._browser_calls_used,   # [MỚI]
+                browser_calls_max=self.max_browser_calls,      # [MỚI]
             )
 
     def is_url_budget_exhausted(self) -> bool:
