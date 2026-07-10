@@ -59,8 +59,8 @@ jobs:
 
       - name: Run unit tests (rule_library + t3_normalize Check G)
         run: |
-          python -m unittest tests.test_rule_library -v
-          python -m unittest tests.test_t3_normalize_check_g -v
+          python -m unittest test.test_rule_library -v
+          python -m unittest test.test_t3_normalize_check_g -v
 
       - name: Validate search_engines.json
         run: python -c "import json; json.load(open('search_engines.json')); print('search_engines.json OK')"
