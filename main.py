@@ -309,8 +309,18 @@ async def run_pipeline_once(cfg=None) -> dict:
 
         # === Load Global Rule Library — 1 lần / chu kỳ, TRƯỚC vòng lặp Gate 5 ===
         db = get_shared_db()  # đã có sẵn pattern get_shared_db() dùng cho T4 (_load_existing_visual_ids)
-        active_rules = load_active_rules(db)  # scope=None -> load TẤT CẢ rule active, filter sau
-        logger.info(f"   Rule Library — {len(active_rules)} rule active đã load.")
+        # [FIX] load_active_rules() trả (rules, rule_check_skipped) — rule_check_skipped=True
+        # nghĩa là Mongo offline/lỗi query (fail-open thật sự), KHÔNG phải 0 rule active hợp lệ.
+        active_rules, rule_check_skipped = load_active_rules(db)  # scope=None -> load TẤT CẢ rule active, filter sau
+        if rule_check_skipped:
+            logger.warning(
+                "   Rule Library — fail-open (Mongo offline/lỗi query), "
+                "Gate 5 chạy KHÔNG có Global Rule Cross-Check chu kỳ này."
+            )
+            obs.event(step="T4_NORMALIZE", agent="rule_library", status="WARNING",
+                      message="Global Rule Library fail-open — Gate 5 bỏ qua Check G chu kỳ này.")
+        else:
+            logger.info(f"   Rule Library — {len(active_rules)} rule active đã load.")
 
         # === T3: Normalize (Gate 5 — run_gate_5 trả kèm quality_gate_report) ===
         gate5_results = [run_gate_5(c, cfg, rules=active_rules) for c in combined_outputs]

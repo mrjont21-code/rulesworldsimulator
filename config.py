@@ -207,17 +207,17 @@ def get_form_fields(
 
 
 # =============================================================================
-# GEMINI — round robin API keys (Free Tier). Giữ nguyên convention hiện có:
-# key env var vẫn đặt tên CLAUDE_KEY_* vì lý do tương thích ngược lịch sử,
-# dù model dùng thực tế là Gemini Flash 2.5 Free (KHÔNG phải Anthropic).
+# GEMINI — round robin API keys (Free Tier). Đọc từ env var
+# GEMINI_MODEL_NO_1..GEMINI_MODEL_NO_7.
 # =============================================================================
 def load_gemini_api_keys() -> List[str]:
-    """Đọc tối đa 7 API key Gemini Free Tier từ env var CLAUDE_KEY_1..CLAUDE_KEY_7.
+    """Đọc tối đa 7 API key Gemini Free Tier từ env var
+    GEMINI_MODEL_NO_1..GEMINI_MODEL_NO_7.
     Bỏ qua key rỗng. Trả về list rỗng nếu không có key nào (pipeline vẫn phải
     chạy được để chạy unit test / các bước không dùng LLM)."""
     keys = []
     for i in range(1, 8):
-        key = os.getenv(f"CLAUDE_KEY_{i}", "").strip()
+        key = os.getenv(f"GEMINI_MODEL_NO_{i}", "").strip()
         if key:
             keys.append(key)
     return keys

@@ -96,7 +96,7 @@ def _call_gemini(
 
     api_key = _next_api_key()
     if not api_key:
-        logger.error("❌ [Summarizer] Không có Gemini API key nào trong CLAUDE_KEY_1..7.")
+        logger.error("❌ [Summarizer] Không có Gemini API key nào trong GEMINI_MODEL_NO_1..7.")
         return None
 
     try:
