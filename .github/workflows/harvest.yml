@@ -61,13 +61,13 @@ jobs:
         env:
           MONGODB_URI: ${{ secrets.MONGODB_URI }}
           MONGODB_DB_NAME: ${{ vars.MONGODB_DB_NAME || 'world_simulator' }}
-          CLAUDE_KEY_1: ${{ secrets.GEMINI_KEY_1 }}
-          CLAUDE_KEY_2: ${{ secrets.GEMINI_KEY_2 }}
-          CLAUDE_KEY_3: ${{ secrets.GEMINI_KEY_3 }}
-          CLAUDE_KEY_4: ${{ secrets.GEMINI_KEY_4 }}
-          CLAUDE_KEY_5: ${{ secrets.GEMINI_KEY_5 }}
-          CLAUDE_KEY_6: ${{ secrets.GEMINI_KEY_6 }}
-          CLAUDE_KEY_7: ${{ secrets.GEMINI_KEY_7 }}
+          GEMINI_MODEL_NO_1: ${{ secrets.GEMINI_KEY_1 }}
+          GEMINI_MODEL_NO_2: ${{ secrets.GEMINI_KEY_2 }}
+          GEMINI_MODEL_NO_3: ${{ secrets.GEMINI_KEY_3 }}
+          GEMINI_MODEL_NO_4: ${{ secrets.GEMINI_KEY_4 }}
+          GEMINI_MODEL_NO_5: ${{ secrets.GEMINI_KEY_5 }}
+          GEMINI_MODEL_NO_6: ${{ secrets.GEMINI_KEY_6 }}
+          GEMINI_MODEL_NO_7: ${{ secrets.GEMINI_KEY_7 }}
           GEMINI_MODEL_NAME: ${{ vars.GEMINI_MODEL_NAME || 'gemini-2.5-flash' }}
 
           # [MỚI] Budget controls — có thể override qua GitHub Variables
