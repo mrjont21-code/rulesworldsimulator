@@ -1,0 +1,76 @@
+name: Clear Repo1 Blackbook Cache
+
+# Workflow PHỤ, chạy thủ công 1 lần để xoá HẲN cache "repo1-blackbook-v1"
+# (chứa blackbook.json) trên GitHub Actions.
+#
+# Lý do cần workflow riêng: actions/cache/restore + actions/cache/save (dùng
+# trong harvest.yml) KHÔNG có thao tác "xoá cache". restore-and-resave chỉ
+# ghi đè nội dung file blackbook.json TRONG WORKSPACE của lần chạy hiện tại,
+# nhưng nếu job fail/không chạy tới bước save, hoặc cache đã tồn tại từ
+# trước, cache entry cũ trên server GitHub Actions vẫn còn nguyên — dẫn tới
+# tình trạng "xoá blackbook.json trong repo/checkout" nhưng lần chạy
+# harvest.yml kế tiếp vẫn restore lại bản cache cũ (có domain DuckDuckGo/
+# Brave/Startpage đang bị đánh dấu banned do bug get_stealth_headers()).
+#
+# Cách xoá triệt để: gọi thẳng GitHub REST API cache (qua `gh cache delete`)
+# để xoá cache entry ở phía server, không phải chỉ ở workspace.
+#
+# Cách dùng: vào tab Actions -> chọn "Clear Repo1 Blackbook Cache" ->
+# "Run workflow". Chạy xong, lần harvest.yml kế tiếp sẽ không restore được
+# gì (cache miss) -> main.py tự tạo blackbook.json mới, sạch, không còn ban
+# giả.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  actions: write   # bắt buộc để GITHUB_TOKEN được phép gọi API xoá cache
+  contents: read
+
+concurrency:
+  # Tránh đụng độ với chính harvest.yml đang restore/save cache cùng lúc.
+  group: repo1-harvest
+  cancel-in-progress: false
+
+jobs:
+  clear-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Liệt kê & xoá mọi cache khớp key "repo1-blackbook-v1"
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -e
+          echo "🔍 Đang tìm cache với key 'repo1-blackbook-v1' trên repo $REPO ..."
+
+          IDS=$(gh cache list --repo "$REPO" --key repo1-blackbook-v1 \
+                --json id --jq '.[].id' || true)
+
+          if [ -z "$IDS" ]; then
+            echo "✅ Không tìm thấy cache nào khớp key này — có thể đã bị xoá từ trước."
+            exit 0
+          fi
+
+          echo "🗑️  Sẽ xoá $(echo "$IDS" | wc -l) cache entry:"
+          echo "$IDS"
+
+          for id in $IDS; do
+            echo "  -> Xoá cache id=$id"
+            gh cache delete "$id" --repo "$REPO"
+          done
+
+          echo "✅ Đã xoá xong toàn bộ cache 'repo1-blackbook-v1'."
+
+      - name: Xác nhận không còn cache nào khớp
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          REMAIN=$(gh cache list --repo "$REPO" --key repo1-blackbook-v1 \
+                    --json id --jq 'length' || echo 0)
+          echo "Số cache còn lại khớp key: $REMAIN"
+          if [ "$REMAIN" != "0" ]; then
+            echo "⚠️ Vẫn còn cache chưa xoá được — kiểm tra quyền GITHUB_TOKEN."
+            exit 1
+          fi
