@@ -101,7 +101,7 @@ async def _fetch_search_results(
         return []
 
     try:
-        headers = stealth.get_stealth_headers()
+        _, headers = stealth.get_stealth_headers()
         resp = await client.get(url, headers=headers, timeout=15.0)
         resp.raise_for_status()
         if domain:
