@@ -112,3 +112,54 @@ def record_success(blackbook: dict, domain: str):
     entry["failures"] = 0
     entry["status"] = "active"
     entry.pop("banned_until", None)
+
+
+# =============================================================================
+# [MỚI — AdaptiveRouter] Adapter label cache trong blackbook
+# =============================================================================
+
+def label_adapter(blackbook: dict, domain: str, adapter_name: str, ttl_days: int = 7) -> None:
+    """Ghi nhãn adapter thành công cho domain vào blackbook.
+
+    - Cập nhật field 'skill' thành tên adapter (tier1_http | tier2_reader |
+      tier3_browser | tier4_stealth_tls).
+    - Set adapter_label_valid_until = now + ttl_days.
+    - KHÔNG đụng vào 'status', 'banned_until', 'failures' — tránh xóa trạng thái ban.
+
+    Gọi sau khi fetch_with_router() thành công, thay vì record_success() (router
+    gọi record_success() riêng sau đó).
+    """
+    entry = blackbook.setdefault(
+        domain, {"failures": 0, "status": "active", "skill": "HTTP"}
+    )
+    entry["skill"] = adapter_name
+    entry["adapter_label_valid_until"] = (
+        datetime.now(timezone.utc) + timedelta(days=ttl_days)
+    ).isoformat()
+
+
+def get_adapter_label(blackbook: dict, domain: str) -> str | None:
+    """Trả về tên adapter đã lưu nếu còn hạn, ngược lại trả None.
+
+    None có nghĩa là cần probe lại để chọn adapter — KHÔNG có nghĩa là domain bị ban.
+    """
+    entry = blackbook.get(domain)
+    if not entry:
+        return None
+
+    until_str = entry.get("adapter_label_valid_until")
+    if not until_str:
+        return None
+
+    try:
+        expiry = datetime.fromisoformat(until_str)
+    except ValueError:
+        return None
+
+    if datetime.now(timezone.utc) >= expiry:
+        return None
+
+    adapter = entry.get("skill")
+    # Chỉ trả về nếu là tên adapter hợp lệ (không trả "HTTP" mặc định cũ)
+    valid_adapters = {"tier1_http", "tier2_reader", "tier3_browser", "tier4_stealth_tls"}
+    return adapter if adapter in valid_adapters else None

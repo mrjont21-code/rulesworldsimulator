@@ -8,6 +8,8 @@ pydantic>=2.6,<3
 pymongo>=4.6,<5
 scikit-learn>=1.4,<2
 google-generativeai>=0.5,<1
+playwright>=1.44,<2      # tier3_browser — Chromium headless
+curl_cffi>=0.7,<1        # tier4_stealth_tls — TLS fingerprint impersonation
 
 # Test tooling
 pytest>=8.0,<9

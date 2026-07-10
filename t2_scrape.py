@@ -22,6 +22,9 @@ from bs4 import BeautifulSoup
 from config import VISUAL_KEYWORD_FILTER, VISUAL_KEYWORD_DENSITY_THRESHOLD
 from domain_ban import is_banned, record_failure, record_success
 import stealth
+import core.adaptive_router  # [FIX] import module (không phải from-import) để
+# test có thể patch("core.adaptive_router.fetch_with_router") và scrape_url()
+# thấy được bản mock tại thời điểm gọi.
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +115,11 @@ def _domain_of(url: str) -> str:
 
 
 async def scrape_url(
-    client: httpx.AsyncClient, item: dict, blackbook: dict
+    client: Optional[httpx.AsyncClient],   # Giữ để backward-compat; có thể None
+    item: dict,
+    blackbook: dict,
+    budget=None,   # BudgetManager | None  ← đã có trong run_scrape_pipeline
+    obs=None,      # PipelineLogger | None ← đã có trong run_scrape_pipeline
 ) -> Optional[ScrapedDocument]:
     """
     1. Fetch HTML (stealth headers để tránh bot detection).
@@ -130,24 +137,20 @@ async def scrape_url(
         logger.info(f"⏭️ [T2] Bỏ qua '{url}' (domain đang bị ban tạm thời).")
         return None
 
-    try:
-        # [FIX] get_stealth_headers() trả về Tuple[str, Dict] — (ua, headers).
-        # Bug giống hệt t0_search.py: gán thẳng tuple vào `headers` khiến
-        # httpx.Headers() cố unpack chuỗi UA thành (k, v) -> ValueError ngay
-        # lập tức, MỌI request scrape đều fail trước khi chạm mạng.
-        _, headers = stealth.get_stealth_headers()
-        resp = await client.get(url, headers=headers, timeout=20.0)
-        resp.raise_for_status()
-        if domain:
-            record_success(blackbook, domain)
-    except Exception as e:
-        logger.warning(f"⚠️ [T2] Lỗi fetch '{url}': {e}")
-        if domain:
-            record_failure(blackbook, domain)
+    # [MỚI] fetch qua AdaptiveRouter thay vì httpx trực tiếp
+    html = await core.adaptive_router.fetch_with_router(
+        url=url,
+        domain=domain,
+        blackbook=blackbook,
+        budget=budget,
+        obs=obs,
+    )
+    if html is None:
+        # router đã gọi record_failure() nội bộ nếu cần
         return None
 
     try:
-        soup = clean_dom(resp.text)
+        soup = clean_dom(html)
         raw_text = soup.get_text(separator=" ", strip=True)
         image_metadata = extract_image_metadata(soup)
         density = compute_visual_keyword_density(raw_text)
@@ -199,9 +202,8 @@ async def run_scrape_pipeline(
                 break
             allowed_items.append(item)
 
-    async with httpx.AsyncClient(follow_redirects=True) as client:
-        tasks = [scrape_url(client, item, blackbook) for item in allowed_items]
-        results = await asyncio.gather(*tasks, return_exceptions=False)
+    tasks = [scrape_url(None, item, blackbook, budget=budget, obs=obs) for item in allowed_items]
+    results = await asyncio.gather(*tasks, return_exceptions=False)
 
     for doc in results:
         if doc is not None:
