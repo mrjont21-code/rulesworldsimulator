@@ -44,6 +44,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Install Playwright browser (Chromium only)
+        run: python -m playwright install --with-deps chromium
+
       # blackbook.json giữ round-robin cursor + dedup keyword giữa các lần
       # chạy (main.py là nơi DUY NHẤT load/save — xem docstring main.py).
       # Runner GitHub Actions ephemeral nên phải cache file này qua actions/cache,
@@ -71,6 +74,7 @@ jobs:
           BUDGET_MAX_URLS:         ${{ vars.BUDGET_MAX_URLS || '150' }}
           BUDGET_MAX_GEMINI_CALLS: ${{ vars.BUDGET_MAX_GEMINI_CALLS || '300' }}
           BUDGET_MAX_TOKENS:       ${{ vars.BUDGET_MAX_TOKENS || '300000' }}
+          BUDGET_MAX_BROWSER_CALLS: ${{ vars.BUDGET_MAX_BROWSER_CALLS || '15' }}
         run: python main.py
 
       # Luôn lưu lại blackbook.json mới nhất, kể cả khi bước trên fail giữa

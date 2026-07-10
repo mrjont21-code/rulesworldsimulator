@@ -51,7 +51,9 @@ jobs:
                    't3_normalize','t4_deduplicate','t5_upload','mongo_shared',
                    'rule_library','domain_ban','stealth','manage_rules',
                    'builders.visual_prompt_builder','schemas.master_schema_2_0',
-                   'schemas.visual_blueprint_3_0']
+                   'schemas.visual_blueprint_3_0',
+                   'core.adaptive_router','core.adapters.tier1_http','core.adapters.tier2_reader',
+                   'core.adapters.tier3_browser','core.adapters.tier4_stealth_tls','core.anti_detect']
           for m in mods:
               importlib.import_module(m)
               print('OK:', m)
@@ -59,8 +61,8 @@ jobs:
 
       - name: Run unit tests (rule_library + t3_normalize Check G)
         run: |
-          python -m unittest test.test_rule_library -v
-          python -m unittest test.test_t3_normalize_check_g -v
+          python -m unittest tests.test_rule_library -v
+          python -m unittest tests.test_t3_normalize_check_g -v
 
       - name: Validate search_engines.json
         run: python -c "import json; json.load(open('search_engines.json')); print('search_engines.json OK')"
