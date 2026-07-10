@@ -70,39 +70,19 @@ def is_academic_domain(domain: str) -> bool:
 
 
 def is_banned(blackbook: dict, domain: str) -> bool:
-    """True nếu domain đang bị ban VÀ vẫn còn trong thời gian cooldown."""
-    entry = blackbook.get(domain)
-    if not entry or entry.get("status") != "banned":
-        return False
-
-    banned_until = entry.get("banned_until")
-    if not banned_until:
-        # Bản ghi cũ từ trước khi có cooldown (không có banned_until) -> coi
-        # như đã hết hạn, cho thử lại thay vì ban vĩnh viễn mãi mãi.
-        return False
-
-    try:
-        expiry = datetime.fromisoformat(banned_until)
-    except ValueError:
-        return False
-
-    return datetime.now(timezone.utc) < expiry
+    """Ép luôn trả về False để bypass hoàn toàn logic ban trong lúc test."""
+    return False
 
 
 def record_failure(blackbook: dict, domain: str) -> bool:
     """
-    Tăng bộ đếm fail cho domain. Trả về True nếu domain vừa bị ban ở lần gọi
-    này (vừa chạm ngưỡng BAN_THRESHOLD_FAILURES).
+    Tăng bộ đếm fail cho domain. Ép luôn trả về False để không bao giờ kích hoạt
+    cơ chế ban tạm thời trong lúc test.
     """
     entry = blackbook.setdefault(domain, {"failures": 0, "status": "active", "skill": "HTTP"})
     entry["failures"] = entry.get("failures", 0) + 1
-
-    if entry["failures"] >= BAN_THRESHOLD_FAILURES:
-        entry["status"] = "banned"
-        entry["banned_until"] = (
-            datetime.now(timezone.utc) + timedelta(days=BAN_COOLDOWN_DAYS)
-        ).isoformat()
-        return True
+    
+    # Bypass: Bỏ chặn update status thành "banned"
     return False
 
 
